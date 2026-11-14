@@ -42,7 +42,7 @@ internal fun PopupGlassControls(
     ) {
         SettingsGroup {
             row {
-                Column(Modifier.fillMaxWidth().padding(Spacing.md)) {
+                Column(Modifier.fillMaxWidth().padding(vertical = Spacing.md)) {
                     CompositionLocalProvider(LocalPopupGlassOpacity provides preview) { PopupGlassPreview() }
                     Text(
                         stringResource(

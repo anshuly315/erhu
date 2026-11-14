@@ -627,7 +627,7 @@ private fun WatermarksBlocklistSection(
     ) {
         SettingsGroup {
             row {
-                Column(modifier = Modifier.fillMaxWidth().padding(Spacing.md)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.md)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
@@ -766,7 +766,7 @@ private fun ConfidenceThresholdSection(
     ) {
         SettingsGroup {
             row {
-                Column(modifier = Modifier.padding(Spacing.md)) {
+                Column(modifier = Modifier.padding(vertical = Spacing.md)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

@@ -23,4 +23,7 @@ data class PlaylistSongCrossRefEntity(
     val songId: Long,
     @ColumnInfo(name = "position")
     val position: Int,
+    /** Mutable display order; [position] remains the entry's permanent identity. */
+    @ColumnInfo(name = "sort_order", defaultValue = "0")
+    val sortOrder: Int = position,
 )

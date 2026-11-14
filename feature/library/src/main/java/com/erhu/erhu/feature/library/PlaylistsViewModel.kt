@@ -76,6 +76,23 @@ class PlaylistsViewModel
             openPlaylistId.value = playlistId
         }
 
+        /** Playlist persistence only: the active playback queue is deliberately left alone. */
+        suspend fun reorderOpenPlaylist(
+            playlistId: Long,
+            expectedEntries: List<PlaylistEntry>,
+            from: Int,
+            to: Int,
+        ): Boolean {
+            if (openPlaylistId.value != playlistId) return false
+            return when (val result = playlistRepository.reorderEntries(playlistId, expectedEntries.map { it.position }, from, to)) {
+                is AppResult.Success -> result.data
+                is AppResult.Error -> {
+                    _userMessage.value = result.error.localizedMessage(localized())
+                    false
+                }
+            }
+        }
+
         /** [onResult], when given, receives the outcome message instead of [userMessage]. */
         fun createPlaylist(
             name: String,

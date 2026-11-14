@@ -38,4 +38,6 @@ data class SongEntity(
     val isFavorite: Boolean = false,
     /** The file's BPM tag when it is a plausible tempo; read with the other tag enrichment. */
     val bpm: Int? = null,
+    @ColumnInfo(name = "date_added_ms", defaultValue = "0")
+    val dateAddedMs: Long = 0L,
 )

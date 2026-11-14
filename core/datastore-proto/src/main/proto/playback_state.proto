@@ -78,6 +78,9 @@ message PlaybackStateProto {
   map<string, LyricsTimingAdjustmentProto> lyrics_timing = 39;
   // Collection switches preserve all existing transition presets and pair overrides.
   repeated string disabled_transition_collections = 40;
+  string songs_sort = 41;
+  string songs_genre = 42;
+  string songs_mood = 43;
 }
 
 message LyricsTimingAdjustmentProto {

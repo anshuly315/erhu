@@ -3,8 +3,29 @@ package com.erhu.erhu.core.database
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
+/** Preserve the library; old rows are backfilled from MediaStore on the Songs page. */
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `songs` ADD COLUMN `date_added_ms` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 /**
- * v5 → v6: credit/album/artist metadata columns, album–artist links, artwork and
+ * v14 â†’ v15: separate playlist display order from each entry's permanent position identity.
+ * Copying the old position preserves the existing order, including gaps and duplicate songs,
+ * while leaving transition keys and playback origins attached to their original entries.
+ */
+@Suppress("MagicNumber") // schema version numbers
+val MIGRATION_14_15 =
+    object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `playlist_song_cross_ref` ADD COLUMN `sort_order` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("UPDATE `playlist_song_cross_ref` SET `sort_order` = `position`")
+        }
+    }
+
+/**
+ * v5 â†’ v6: credit/album/artist metadata columns, albumâ€“artist links, artwork and
  * alias tables kept across scans, unverified credit segments. Derived rows are
  * left in place; the next scan rebuilds them. Artwork is carried over by name key.
  */
@@ -40,7 +61,7 @@ private val STATEMENTS_5_6 =
         "UPDATE `artists` SET `artist_key` = lower(trim(`name`))",
     )
 
-/** v6 → v7: user-chosen playlist artwork and the recently-played log (both kept across scans). */
+/** v6 â†’ v7: user-chosen playlist artwork and the recently-played log (both kept across scans). */
 @Suppress("MagicNumber") // schema version numbers
 val MIGRATION_6_7 =
     object : Migration(6, 7) {
@@ -58,7 +79,7 @@ private val STATEMENTS_6_7 =
     )
 
 /**
- * v7 → v8: artist artwork records where it came from. Existing rows become automatic artwork of
+ * v7 â†’ v8: artist artwork records where it came from. Existing rows become automatic artwork of
  * matcher 0, so the new matcher re-checks them once; nothing is deleted or rewritten.
  */
 @Suppress("MagicNumber") // schema version numbers
@@ -77,7 +98,7 @@ private val STATEMENTS_7_8 =
     )
 
 /**
- * v8 → v9: monthly listening statistics (Sound Capsule). Two new tables only; no existing
+ * v8 â†’ v9: monthly listening statistics (Sound Capsule). Two new tables only; no existing
  * table, row or column is touched.
  */
 @Suppress("MagicNumber") // schema version numbers
@@ -89,7 +110,7 @@ val MIGRATION_8_9 =
     }
 
 /**
- * v10 → v11: timestamp bookmarks and the waveform cache. Two new tables only; no existing table,
+ * v10 â†’ v11: timestamp bookmarks and the waveform cache. Two new tables only; no existing table,
  * row or column is touched.
  */
 @Suppress("MagicNumber") // schema version numbers
@@ -112,7 +133,7 @@ private val STATEMENTS_10_11 =
     )
 
 /**
- * v11 → v12: learned watermarks/junk tokens table for autonomous metadata cleaning.
+ * v11 â†’ v12: learned watermarks/junk tokens table for autonomous metadata cleaning.
  */
 @Suppress("MagicNumber") // schema version numbers
 val MIGRATION_11_12 =
@@ -129,7 +150,7 @@ private val STATEMENTS_11_12 =
     )
 
 /**
- * v12 → v13: songs get a `bpm` column (the file's BPM tag), so the library and VYBE can use tempo.
+ * v12 â†’ v13: songs get a `bpm` column (the file's BPM tag), so the library and VYBE can use tempo.
  * Every song is marked for re-enrichment so the next library scan reads its BPM tag (the other
  * enriched values are read again from the same tags); nothing else changes.
  */
@@ -143,7 +164,7 @@ val MIGRATION_12_13 =
     }
 
 /**
- * v9 → v10: playlist entries are keyed by (playlist, position) instead of (playlist, song), so a
+ * v9 â†’ v10: playlist entries are keyed by (playlist, position) instead of (playlist, song), so a
  * playlist can hold the same song more than once (a saved queue). Every existing entry is kept in
  * its order; positions are renumbered 0..n-1 per playlist (a correlated count: SQLite on older
  * Android has no window functions). Nothing else changes.

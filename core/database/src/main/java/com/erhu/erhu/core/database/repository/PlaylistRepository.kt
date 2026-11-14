@@ -28,6 +28,14 @@ interface PlaylistRepository {
     /** The playlist's entries in order, each with its position (its stable identity within the playlist). */
     fun observePlaylistEntries(playlistId: Long): Flow<List<PlaylistEntry>>
 
+    /** Moves one occurrence in a checked snapshot; false means the playlist changed during the drag. */
+    suspend fun reorderEntries(
+        playlistId: Long,
+        expectedPositions: List<Int>,
+        from: Int,
+        to: Int,
+    ): AppResult<Boolean>
+
     /** Playlists played most recently first (only ones actually played from a playlist). */
     fun observeRecentPlaylists(limit: Int): Flow<List<Playlist>>
 
@@ -94,6 +102,16 @@ class PlaylistRepositoryImpl
 
         override fun observeRecentPlaylists(limit: Int): Flow<List<Playlist>> =
             recentlyPlayedDao.observeRecentPlaylists(limit).map { rows -> rows.map { it.toPlaylist() } }
+
+        override suspend fun reorderEntries(
+            playlistId: Long,
+            expectedPositions: List<Int>,
+            from: Int,
+            to: Int,
+        ): AppResult<Boolean> =
+            appResultOf(mapError = { AppError.DatabaseError("Could not reorder playlist", it) }) {
+                playlistDao.reorderEntries(playlistId, expectedPositions, from, to, timeSource.now())
+            }
 
         override suspend fun createPlaylist(name: String): AppResult<Long> {
             val trimmed = name.trim()

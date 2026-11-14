@@ -118,6 +118,8 @@ import com.erhu.erhu.feature.library.ArtworkManagerScreen
 import com.erhu.erhu.feature.library.AudioDetailsViewModel
 import com.erhu.erhu.feature.library.FeaturedAlbumsViewModel
 import com.erhu.erhu.feature.library.LibraryBottomChrome
+import com.erhu.erhu.feature.library.SongsScreen
+import com.erhu.erhu.navigation.Songs
 import com.erhu.erhu.feature.library.LibraryScreen
 import com.erhu.erhu.feature.library.LibrarySection
 import com.erhu.erhu.feature.library.LibraryViewModel
@@ -324,6 +326,7 @@ fun MainScaffold(
             // reveals the live screen underneath.
             val player = rememberPlayerTransitionState()
             val isOnLibrary = currentDestination?.hasRoute(Library::class) == true
+            val isOnSongs = currentDestination?.hasRoute(Songs::class) == true
             val isOnIntroduction = currentDestination?.hasRoute(com.erhu.erhu.navigation.Introduction::class) == true
             // Content is drawn behind transparent system bars, so their icon colour must
             // follow the app theme rather than the system's light/dark setting.
@@ -368,6 +371,7 @@ fun MainScaffold(
             }
             // Search is opened from the bottom controls, so its on/off state lives here too.
             var isLibrarySearchActive by rememberSaveable { mutableStateOf(false) }
+            var isSongsSearchActive by rememberSaveable { mutableStateOf(false) }
             // Library scrolling compacts the bottom chrome; switching section or searching restores it.
             val libraryChrome = rememberLibraryChromeState()
             LaunchedEffect(librarySection, isLibrarySearchActive) { libraryChrome.expand() }
@@ -548,13 +552,16 @@ fun MainScaffold(
                                                     // that compacts while the library scrolls.
                                                     LibraryBottomChrome(
                                                         state = libraryChrome,
-                                                        showNavigation = isOnLibrary && isLibraryContentShown,
-                                                        selected = visibleLibrarySection,
-                                                        onSelect = { librarySection = it.visibleWithVybe(vybeEnabled) },
+                                                        showNavigation = (isOnLibrary && isLibraryContentShown) || isOnSongs,
+                                                        selected = if (isOnSongs) LibrarySection.LIBRARY else visibleLibrarySection,
+                                                        onSelect = {
+                                                            if (isOnSongs) navController.popBackStack<Library>(false)
+                                                            librarySection = it.visibleWithVybe(vybeEnabled)
+                                                        },
                                                         defaultStartSection = defaultStartSection,
-                                                        onSearch = { isLibrarySearchActive = true },
+                                                        onSearch = { if (isOnSongs) isSongsSearchActive = true else isLibrarySearchActive = true },
                                                         onExpand = { scope.launch { libraryChrome.expand() } },
-                                                        searching = isLibrarySearchActive,
+                                                        searching = if (isOnSongs) isSongsSearchActive else isLibrarySearchActive,
                                                         hasCurrentSong = hasCurrentSong,
                                                         onShufflePlayLibrary = { libraryViewModel.shufflePlayLibrary() },
                                                         miniPlayer = { compact ->
@@ -606,9 +613,23 @@ fun MainScaffold(
                                                             }
                                                         },
                                                         onOpenRadio = { if (vybeEnabled) navController.navigate(RadioStationDetail(it)) },
+                                                        onOpenSongs = { navController.navigate(Songs) },
                                                         onSelectSection = { librarySection = it.visibleWithVybe(vybeEnabled) },
                                                         isSearchActive = isLibrarySearchActive,
                                                         onSearchActiveChange = { isLibrarySearchActive = it },
+                                                        chromeScroll = libraryChrome.connection,
+                                                    )
+                                                }
+                                            }
+                                            composable<Songs> {
+                                                ProvideMotionScope(this) {
+                                                    SongsScreen(
+                                                        viewModel = hiltViewModel(),
+                                                        libraryViewModel = libraryViewModel,
+                                                        playlistsViewModel = playlistsViewModel,
+                                                        onBack = { navController.popBackStack() },
+                                                        isSearchActive = isSongsSearchActive,
+                                                        onSearchActiveChange = { isSongsSearchActive = it },
                                                         chromeScroll = libraryChrome.connection,
                                                     )
                                                 }
@@ -946,6 +967,7 @@ private fun LibraryRoute(
     onOpenPlaylist: (Long) -> Unit,
     onOpenSmartPlaylist: (mixKey: String) -> Unit,
     onOpenRadio: (albumId: Long) -> Unit,
+    onOpenSongs: () -> Unit,
     onSelectSection: (LibrarySection) -> Unit,
     isSearchActive: Boolean,
     onSearchActiveChange: (Boolean) -> Unit,
@@ -1055,6 +1077,7 @@ private fun LibraryRoute(
             onOpenPlaylist = onOpenPlaylist,
             onOpenSmartPlaylist = onOpenSmartPlaylist,
             onOpenRadio = onOpenRadio,
+            onOpenSongs = onOpenSongs,
             onSelectSection = onSelectSection,
             isSearchActive = isSearchActive,
             onSearchActiveChange = onSearchActiveChange,

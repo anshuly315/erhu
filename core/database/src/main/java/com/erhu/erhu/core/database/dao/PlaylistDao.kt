@@ -104,6 +104,50 @@ interface PlaylistDao {
     @Query("SELECT COALESCE(MAX(position), -1) FROM playlist_song_cross_ref WHERE playlist_id = :playlistId")
     suspend fun getMaxPosition(playlistId: Long): Int
 
+    @Query("SELECT COALESCE(MAX(sort_order), -1) FROM playlist_song_cross_ref WHERE playlist_id = :playlistId")
+    suspend fun getMaxSortOrder(playlistId: Long): Int
+
+    @Query("UPDATE playlist_song_cross_ref SET sort_order = :sortOrder WHERE playlist_id = :playlistId AND position = :position")
+    suspend fun setEntrySortOrder(
+        playlistId: Long,
+        position: Int,
+        sortOrder: Int,
+    ): Int
+
+    @Query(
+        """
+        SELECT ref.position FROM playlist_song_cross_ref ref
+        INNER JOIN songs s ON s.id = ref.song_id
+        WHERE ref.playlist_id = :playlistId ORDER BY ref.sort_order ASC, ref.position ASC
+        """,
+    )
+    suspend fun getOrderedPositions(playlistId: Long): List<Int>
+
+    /** Reject a stale drag snapshot rather than losing concurrent additions or removals. */
+    @Transaction
+    suspend fun reorderEntries(
+        playlistId: Long,
+        expectedPositions: List<Int>,
+        from: Int,
+        to: Int,
+        timestamp: Long,
+    ): Boolean {
+        if (from !in expectedPositions.indices ||
+            to !in expectedPositions.indices ||
+            getOrderedPositions(playlistId) != expectedPositions
+        ) {
+            return false
+        }
+        return if (from == to) {
+            true
+        } else {
+            val reordered = expectedPositions.toMutableList().apply { add(to, removeAt(from)) }
+            reordered.forEachIndexed { order, position -> setEntrySortOrder(playlistId, position, order) }
+            touchPlaylist(playlistId, timestamp)
+            true
+        }
+    }
+
     /** Appends [songId]; a song already in the playlist is left where it is. Returns false if it was already there. */
     @Transaction
     suspend fun appendSongToPlaylist(
@@ -112,7 +156,9 @@ interface PlaylistDao {
         timestamp: Long,
     ): Boolean {
         if (containsSong(playlistId, songId)) return false
-        insertPlaylistSongCrossRef(PlaylistSongCrossRefEntity(playlistId, songId, getMaxPosition(playlistId) + 1))
+        insertPlaylistSongCrossRef(
+            PlaylistSongCrossRefEntity(playlistId, songId, getMaxPosition(playlistId) + 1, getMaxSortOrder(playlistId) + 1),
+        )
         touchPlaylist(playlistId, timestamp)
         return true
     }
@@ -142,7 +188,7 @@ interface PlaylistDao {
         SELECT s.* FROM songs s
         INNER JOIN playlist_song_cross_ref ref ON s.id = ref.song_id
         WHERE ref.playlist_id = :playlistId
-        ORDER BY ref.position ASC
+        ORDER BY ref.sort_order ASC, ref.position ASC
         """,
     )
     fun getSongsForPlaylist(playlistId: Long): Flow<List<SongEntity>>
@@ -153,7 +199,7 @@ interface PlaylistDao {
         SELECT s.*, ref.position AS entry_position FROM songs s
         INNER JOIN playlist_song_cross_ref ref ON s.id = ref.song_id
         WHERE ref.playlist_id = :playlistId
-        ORDER BY ref.position ASC
+        ORDER BY ref.sort_order ASC, ref.position ASC
         """,
     )
     fun getEntriesForPlaylist(playlistId: Long): Flow<List<PlaylistEntryRow>>

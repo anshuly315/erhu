@@ -189,6 +189,19 @@ class VybeEngine
                 }
             }
 
+        /** Only a complete, ready catalog is allowed to classify moods. */
+        suspend fun matchMood(query: String, expected: List<com.erhu.erhu.core.model.SongTags>): Set<Long>? = withContext(dispatcher) {
+            if (_status.value !is VybeStatus.Ready || library.size != expected.size) return@withContext null
+            val current = library.associateBy { it.songId }
+            // During the indexing debounce, old vectors must not classify edited or new metadata.
+            if (expected.any { row ->
+                val indexed = current[row.songId]
+                indexed == null || indexed.title != row.title || indexed.artist != row.artist ||
+                    indexed.album != row.album || indexed.genre != row.genre || indexed.year != row.year || indexed.bpm != row.bpm
+            }) return@withContext null
+            discovery()?.moodMatches(query, library)
+        }
+
         /** Songs nearest to [songId] by description (e.g. the current track). */
         suspend fun similarTo(
             songId: Long,

@@ -208,6 +208,18 @@ class VybeDiscovery(
             .map { VybeHit(it.songId, it.score, listOf(SIMILAR_REASON)) }
     }
 
+    /** A confidence-bounded mood set, never an artist/title lookup or arbitrary top-N. */
+    fun moodMatches(query: String, songs: List<SongText>): Set<Long>? {
+        if (songs.isEmpty()) return null
+        val vector = embedder.embed(query, EmbeddingRole.QUERY)
+        val allowed = songs.map { it.songId }.toSet()
+        val ranked = vectors.rank(songs.size) { id, v -> if (id in allowed) cosineSimilarity(vector, v) else null }
+        if (ranked.size != songs.size || isWeak(ranked.map { it.score })) return null
+        val scores = ranked.map { it.score }.sortedDescending()
+        val threshold = maxOf(WEAK_BEST, scores[scores.size / 2] + WEAK_SPREAD)
+        return ranked.filter { it.score >= threshold }.map { it.songId }.toSet().takeIf { it.isNotEmpty() }
+    }
+
     private fun describe(
         query: String,
         songs: List<SongText>,

@@ -6,6 +6,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application>
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <provider
+            android:name="com.erhu.erhu.core.playback.browse.CarArtworkProvider"
+            android:authorities="${applicationId}.car.artwork"
+            android:exported="false"
+            android:grantUriPermissions="true" />
         <service
             android:name="com.lochanpthakke.empee3.core.playback.service.MusicPlaybackService"
             android:foregroundServiceType="mediaPlayback"

@@ -51,14 +51,22 @@ class IdentityRenameCompatibilityTest {
             legacy.version = 14
             names.associateWith { table -> legacy.rawQuery("SELECT * FROM `$table`", null).use(::rows) }
         }
-        val renamed = Room.databaseBuilder(context, ErhuDatabase::class.java, fileName).allowMainThreadQueries().build()
+        val renamed = Room.databaseBuilder(context, ErhuDatabase::class.java, fileName).addMigrations(MIGRATION_14_15, MIGRATION_15_16).allowMainThreadQueries().build()
         try {
             val db = renamed.openHelper.readableDatabase
-            val after = names.associateWith { table -> db.query("SELECT * FROM `$table`").use(::rows) }
+            val after = names.associateWith { table ->
+                val entity = (0 until entities.length()).map { entities.getJSONObject(it) }.first { it.getString("tableName") == table }
+                val fields = entity.getJSONArray("fields")
+                val projection = (0 until fields.length()).joinToString(",") { "`${fields.getJSONObject(it).getString("columnName")}`" }
+                db.query("SELECT $projection FROM `$table`").use(::rows)
+            }
             assertEquals(before, after)
             db.query("SELECT identity_hash FROM room_master_table WHERE id = 42").use {
                 it.moveToFirst()
-                assertEquals(schema.getString("identityHash"), it.getString(0))
+                val current = context.assets.open("com.erhu.erhu.core.database.ErhuDatabase/16.json").bufferedReader().use { reader ->
+                    JSONObject(reader.readText()).getJSONObject("database")
+                }
+                assertEquals(current.getString("identityHash"), it.getString(0))
             }
         } finally {
             renamed.close()

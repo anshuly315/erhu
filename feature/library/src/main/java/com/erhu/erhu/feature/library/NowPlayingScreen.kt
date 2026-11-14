@@ -46,6 +46,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -268,7 +269,16 @@ fun NowPlayingScreen(
     val artworkBackdrop = rememberGlassBackdrop("nowPlayingArtwork", preBlurred = true)
     // The lyrics surfaces take their colours from the playing song's artwork (cached per artwork).
     val lyricsColors = rememberLyricsColors(song)
+    val opaquePlayerBackground = MaterialTheme.colorScheme.background.copy(alpha = 1f)
     Box(modifier = modifier.fillMaxSize()) {
+        // Draw outside both the animated graphics layer and the recorded glass source.
+        // If a device drops either decorative layer, the library still cannot show through.
+        Box(
+            modifier = Modifier.fillMaxSize().drawBehind {
+                val reveal = ((transition?.fraction ?: 1f) / BACKDROP_REVEAL_END).coerceIn(0f, 1f)
+                drawRect(opaquePlayerBackground.copy(alpha = reveal))
+            },
+        )
         Box(
             modifier =
                 Modifier

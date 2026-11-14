@@ -44,12 +44,13 @@ fun GlassArtworkBackdrop(
         value = song?.let { ArtworkLoader.load(context, it.uri, it.artworkUri, BACKDROP_SOURCE_PX) }
     }
     val source = bitmap
+    val opaqueBackground = MaterialTheme.colorScheme.background.copy(alpha = 1f)
     val blurRadius = (glass?.artworkBlurRadiusDp ?: DEFAULT_BLUR_RADIUS_DP).dp
     val scrimColor =
         glass?.let { Color(it.artworkScrim) }
             ?: MaterialTheme.colorScheme.background.copy(alpha = DEFAULT_FALLBACK_SCRIM_ALPHA)
     if (source != null) {
-        Box(modifier = modifier.fillMaxSize()) {
+        Box(modifier = modifier.fillMaxSize().background(opaqueBackground)) {
             Image(
                 bitmap = source.asImageBitmap(),
                 contentDescription = null,
@@ -72,7 +73,7 @@ fun GlassArtworkBackdrop(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(opaqueBackground),
         )
     }
 }

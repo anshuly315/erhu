@@ -2046,4 +2046,10 @@
         <item quantity="one">Deleted %1$d track. Could not delete: %2$s</item>
         <item quantity="other">Deleted %1$d tracks. Could not delete: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Open erhu on your phone and allow music access.</string>
+    <string name="car_error_unavailable">This music is no longer available. Refresh your library on your phone.</string>
+    <string name="car_error_load">Could not load your music. Open erhu on your phone and try again.</string>
+    <string name="car_error_no_results">No matching music was found in your library.</string>
+    <string name="car_error_request">This music request is not supported.</string>
+    <string name="car_open_phone">Open erhu on phone</string>
 </resources>

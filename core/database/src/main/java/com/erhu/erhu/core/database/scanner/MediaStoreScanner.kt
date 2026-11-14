@@ -138,6 +138,7 @@ class MediaStoreScanner
                         val trackColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
                         val yearColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
                         val dateModifiedColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+                        val dateAddedColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                         val albumArtistColumn = c.getColumnIndex("album_artist")
                         val compilationColumn = c.getColumnIndex(MediaStore.Audio.Media.COMPILATION)
 
@@ -230,6 +231,7 @@ class MediaStoreScanner
                                     trackNumber = trackNumber,
                                     year = year,
                                     dateModified = dateModified,
+                                    dateAddedMs = c.getLong(dateAddedColumn).takeIf { it > 0 && it <= Long.MAX_VALUE / 1000 }?.times(1000) ?: -1L,
                                     artworkUri = artworkUri,
                                 )
 
@@ -398,6 +400,7 @@ internal fun scanProjection(sdkInt: Int): Array<String> {
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DATE_MODIFIED,
+            MediaStore.Audio.Media.DATE_ADDED,
         )
     if (sdkInt >= Build.VERSION_CODES.R) {
         columns += MediaStore.Audio.Media.ALBUM_ARTIST

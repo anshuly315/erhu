@@ -189,7 +189,7 @@ fun ThemeSettingsScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(Spacing.md),
+                                    .padding(vertical = Spacing.md),
                         ) {
                             Text(
                                 text =

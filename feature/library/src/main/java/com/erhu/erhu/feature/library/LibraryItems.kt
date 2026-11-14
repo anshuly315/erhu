@@ -69,6 +69,7 @@ fun TrackRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showTrackNumber: Boolean = false,
+    leadingContent: (@Composable () -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     LibraryRow(
@@ -78,7 +79,9 @@ fun TrackRow(
         onClick = onClick,
         modifier = modifier,
         leading = {
-            if (showTrackNumber && song.trackNumber > 0) {
+            if (leadingContent != null) {
+                leadingContent()
+            } else if (showTrackNumber && song.trackNumber > 0) {
                 Box(
                     modifier = Modifier.size(ArtworkSize.list),
                     contentAlignment = Alignment.Center,

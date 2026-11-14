@@ -1,6 +1,7 @@
 package com.erhu.erhu.feature.library
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -40,9 +41,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.erhu.erhu.core.designsystem.component.AppScaffold
 import com.erhu.erhu.core.designsystem.component.EmptyState
@@ -106,6 +110,14 @@ fun PlaylistDetailScreen(
     val songs = remember(entries) { entries.map { it.song } }
     val studioTracks = remember(entries) { entries.map { StudioTrack(it.song, TrackOccurrence(it.song.id, it.position)) } }
     val transitionPairs = rememberCollectionTransitionPairs(CollectionRef.playlist(playlistId), studioTracks, transitionsViewModel)
+    val reorder =
+        rememberPlaylistReorderState(playlistId, entries, transitionPairs.isNotEmpty()) { snapshot, from, to ->
+            viewModel.reorderOpenPlaylist(playlistId, snapshot, from, to)
+        }
+    val density = LocalDensity.current
+    val handleStart = with(density) { Spacing.screenGutter.toPx() }
+    val handleEnd = with(density) { (Spacing.screenGutter + ArtworkSize.list).toPx() }
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     var confirmDelete by remember { mutableStateOf(false) }
     var songsForPlaylist by remember { mutableStateOf<List<Song>?>(null) }
     var songForFixTags by remember { mutableStateOf<Song?>(null) }
@@ -135,6 +147,24 @@ fun PlaylistDetailScreen(
             },
         )
 
+    val renderEntry: @Composable (Int) -> Unit = { index ->
+        val song = reorder.entries[index].song
+        LibrarySongRow(
+            song = song,
+            isCurrent = song.id == currentSongId,
+            onClick = { if (reorder.motion.index == null) viewModel.playOpenPlaylist(index) },
+            actions = actions,
+            onRemoveFromPlaylist = { viewModel.removeSongFromOpenPlaylist(song) },
+            leadingContent = { PlaylistTrackNumber(reorder, index) },
+        )
+        transitionPairs.getOrNull(index)?.let { pair ->
+            CollectionTransitionConnector(pair) {
+                studioPair = pair.key
+                showStudio = true
+            }
+        }
+    }
+
     AppScaffold(
         topBar = {
             OverlayHeader(
@@ -155,55 +185,45 @@ fun PlaylistDetailScreen(
         // Shown once the playlist has loaded (it is never null for long: Room answers within a frame).
         val current = playlist?.takeIf { it.id == playlistId } ?: return@AppScaffold
         val scroll = innerPadding.forScrollingContent(topOverlay = true)
-        LazyColumn(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(scroll.container),
-            contentPadding = PaddingValues(top = scroll.contentTop, bottom = Spacing.lg + scroll.contentBottom),
-        ) {
-            item(key = "header") {
-                PlaylistHeader(
-                    playlist = current,
-                    songs = songs,
-                    onPlay = { viewModel.playOpenPlaylist() },
-                    onShuffle = { viewModel.shuffleOpenPlaylist() },
-                )
-            }
-            item(key = "transitions") {
-                TransitionStudioRow(CollectionRef.playlist(playlistId), transitionsViewModel, onOpen = {
-                    studioPair = null
-                    showStudio =
-                        true
-                })
-            }
-            if (songs.isEmpty()) {
-                item(key = "empty") {
-                    EmptyState(
-                        message = stringResource(CommonR.string.playlist_empty),
-                        modifier = Modifier.padding(top = Spacing.xl),
+        Box(Modifier.fillMaxSize().padding(scroll.container)) {
+            LazyColumn(
+                state = reorder.listState,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .playlistReorderGestures(reorder, handleStart, handleEnd, rtl),
+                contentPadding = PaddingValues(top = scroll.contentTop, bottom = Spacing.lg + scroll.contentBottom),
+            ) {
+                item(key = "header") {
+                    PlaylistHeader(
+                        playlist = current,
+                        songs = songs,
+                        onPlay = { viewModel.playOpenPlaylist() },
+                        onShuffle = { viewModel.shuffleOpenPlaylist() },
                     )
                 }
-            } else {
-                // A playlist can hold the same song twice (a saved queue): the position makes the key unique.
-                itemsIndexed(songs, key = { index, song -> "${song.id}_${entries[index].position}" }) { index, song ->
-                    Column {
-                        LibrarySongRow(
-                            song = song,
-                            isCurrent = song.id == currentSongId,
-                            onClick = { viewModel.playOpenPlaylist(index) },
-                            actions = actions,
-                            onRemoveFromPlaylist = { viewModel.removeSongFromOpenPlaylist(song) },
+                item(key = "transitions") {
+                    TransitionStudioRow(CollectionRef.playlist(playlistId), transitionsViewModel, onOpen = {
+                        studioPair = null
+                        showStudio =
+                            true
+                    })
+                }
+                if (songs.isEmpty()) {
+                    item(key = "empty") {
+                        EmptyState(
+                            message = stringResource(CommonR.string.playlist_empty),
+                            modifier = Modifier.padding(top = Spacing.xl),
                         )
-                        transitionPairs.getOrNull(index)?.let { pair ->
-                            CollectionTransitionConnector(pair) {
-                                studioPair = pair.key
-                                showStudio = true
-                            }
-                        }
+                    }
+                } else {
+                    // Permanent entry identities survive reordering, including duplicate songs.
+                    itemsIndexed(reorder.entries, key = { _, entry -> entry.position }) { index, _ ->
+                        Column(modifier = playlistReorderRowModifier(reorder, index)) { renderEntry(index) }
                     }
                 }
             }
+            PlaylistDragOverlay(reorder, renderEntry)
         }
 
         if (showEditor) {

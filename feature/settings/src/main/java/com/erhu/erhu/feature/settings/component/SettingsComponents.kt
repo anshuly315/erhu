@@ -19,7 +19,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -27,12 +26,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.erhu.erhu.core.designsystem.component.AppScaffold
@@ -40,27 +39,16 @@ import com.erhu.erhu.core.designsystem.component.IconBadge
 import com.erhu.erhu.core.designsystem.component.LocalCollapsingTitle
 import com.erhu.erhu.core.designsystem.component.OverlayHeader
 import com.erhu.erhu.core.designsystem.component.ReportTitleScroll
-import com.erhu.erhu.core.designsystem.component.SectionHeading
 import com.erhu.erhu.core.designsystem.component.TopBarNavigation
 import com.erhu.erhu.core.designsystem.component.forScrollingContent
-import com.erhu.erhu.core.designsystem.component.groupFillColor
-import com.erhu.erhu.core.designsystem.component.groupSurface
 import com.erhu.erhu.core.designsystem.component.rememberCollapsingTitleState
 import com.erhu.erhu.core.designsystem.foundation.Spacing
 
 /** Minimum height of a settings row: comfortably above the 48 dp touch target. */
 private val ROW_MIN_HEIGHT = 56.dp
 
-/** Hairline between rows of a group. */
-private const val DIVIDER_ALPHA = 0.14f
-
 /** Gap between a row's leading icon and its text. */
 private val ICON_TEXT_GAP = 14.dp
-
-/** The fill of a settings group: the app's shared group surface ([groupFillColor]). */
-@Composable
-@ReadOnlyComposable
-internal fun settingsGroupColor(): Color = groupFillColor()
 
 /**
  * One Settings page: the app's floating header (round back / drawer button and title, the same
@@ -109,20 +97,27 @@ fun SettingsSection(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        if (title != null) SectionHeading(title = title)
+        if (title != null) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = Spacing.sm).semantics { heading() },
+            )
+        }
         content()
         if (footer != null) {
             Text(
                 text = footer,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm),
+                modifier = Modifier.padding(top = Spacing.sm),
             )
         }
     }
 }
 
-/** Collects the rows of a [SettingsGroup] so hairlines can be drawn between them. */
+/** Collects the open rows of a [SettingsGroup], retaining their display order. */
 class SettingsGroupScope internal constructor() {
     internal val rows = mutableListOf<@Composable () -> Unit>()
 
@@ -132,9 +127,8 @@ class SettingsGroupScope internal constructor() {
 }
 
 /**
- * Rows on one rounded surface in the theme's card shape (tinted, with a hairline edge), separated
- * by hairlines. One surface per group, never one per row. [selectable] marks a single-choice group
- * for accessibility.
+ * Open rows on the page background, separated by their own vertical padding.
+ * [selectable] preserves single-choice group semantics for accessibility.
  */
 @Composable
 fun SettingsGroup(
@@ -143,22 +137,17 @@ fun SettingsGroup(
     build: SettingsGroupScope.() -> Unit,
 ) {
     val rows = SettingsGroupScope().apply(build).rows
-    val divider = MaterialTheme.colorScheme.outline.copy(alpha = DIVIDER_ALPHA)
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
-                .groupSurface()
                 .then(if (selectable) Modifier.selectableGroup() else Modifier),
     ) {
-        rows.forEachIndexed { index, row ->
-            if (index > 0) HorizontalDivider(modifier = Modifier.padding(horizontal = Spacing.lg), thickness = 0.5.dp, color = divider)
-            row()
-        }
+        rows.forEach { row -> row() }
     }
 }
 
-/** A plain content panel on the group surface (equalizer graph, band controls, release notes). */
+/** Open content aligned with the page gutter; previews and graphs keep their own surfaces. */
 @Composable
 fun SettingsPanel(
     modifier: Modifier = Modifier,
@@ -168,8 +157,7 @@ fun SettingsPanel(
         modifier =
             modifier
                 .fillMaxWidth()
-                .groupSurface()
-                .padding(Spacing.lg),
+                .padding(vertical = Spacing.md),
         content = content,
     )
 }
@@ -199,7 +187,7 @@ private fun SettingsRowLayout(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = ROW_MIN_HEIGHT)
-                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+                .padding(vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {

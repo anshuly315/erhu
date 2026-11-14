@@ -130,7 +130,7 @@ private fun CrashLogRow(
     entry: CrashLogEntry,
     onCopy: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.xs, bottom = Spacing.md)) {
+    Column(modifier = Modifier.padding(top = Spacing.xs, bottom = Spacing.md)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

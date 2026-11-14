@@ -8,6 +8,9 @@ import kotlinx.serialization.Serializable
 object Library
 
 @Serializable
+object Songs
+
+@Serializable
 @SerialName("com.lochanpthakke.empee3.navigation.PlaylistDetail")
 data class PlaylistDetail(
     val playlistId: Long,

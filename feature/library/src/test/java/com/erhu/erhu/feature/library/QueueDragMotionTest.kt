@@ -15,6 +15,40 @@ class QueueDragMotionTest {
     private val songs = listOf(song(1), song(2), song(1), song(3))
 
     @Test
+    fun playlistRowsWithTransitionConnectorsUseTheirMeasuredHeights() = runTest {
+        val motion = ReorderDragMotion<Int>(100f) { listOf(100f, 200f, 80f, 100f) }
+        var entries = listOf(0, 1, 2, 3)
+        motion.begin(entries, 1)
+        motion.drag(1, 150f)
+        assertEquals(3, motion.dropIndex())
+        assertEquals(-200f, motion.displacement(2), 0f)
+        assertEquals(-200f, motion.displacement(3), 0f)
+        withContext(Clock()) {
+            motion.finish(true, { entries }) { from, to ->
+                assertEquals(180f, motion.offset, 0f)
+                entries = entries.toMutableList().apply { add(to, removeAt(from)) }
+                true
+            }
+        }
+        assertEquals(listOf(0, 2, 3, 1), entries)
+    }
+
+    @Test
+    fun rejectedPlaylistWriteReturnsRowsToTheirOriginalOrder() = runTest {
+        val motion = ReorderDragMotion<Int>(100f)
+        val entries = listOf(0, 1, 2)
+        motion.begin(entries, 2)
+        motion.drag(2, -999f)
+        assertEquals(0, motion.dropIndex())
+        withContext(Clock()) {
+            motion.finish(true, { entries }) { _, _ -> false }
+        }
+        assertNull(motion.rows)
+        assertEquals(0, motion.handoff)
+        assertEquals(listOf(0, 1, 2), entries)
+    }
+
+    @Test
     fun landsBeforeCommittingOnceAndPreservesDuplicateOccurrenceIndices() = runTest {
         val motion = QueueDragMotion(100f)
         var queue = songs

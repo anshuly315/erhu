@@ -55,7 +55,7 @@ import com.erhu.erhu.core.database.entity.WaveformCacheEntity
         LearnedWatermarkEntity::class,
         AnimatedArtworkEntity::class,
     ],
-    version = 14,
+    version = 16,
     exportSchema = true,
 )
 abstract class ErhuDatabase : RoomDatabase() {

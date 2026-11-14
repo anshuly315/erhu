@@ -109,6 +109,7 @@ fun LibraryScreen(
     onOpenPlaylist: (Long) -> Unit,
     onOpenSmartPlaylist: (mixKey: String) -> Unit,
     onOpenRadio: (albumId: Long) -> Unit,
+    onOpenSongs: () -> Unit,
     onSelectSection: (LibrarySection) -> Unit,
     isSearchActive: Boolean,
     onSearchActiveChange: (Boolean) -> Unit,
@@ -331,7 +332,7 @@ fun LibraryScreen(
                                         actions =
                                             LibraryOverviewActions(
                                                 onMore = { openShelf = it },
-                                                onMoreSongs = { onSelectSection(LibrarySection.TRACKS) },
+                                                onMoreSongs = onOpenSongs,
                                                 onPlaylistClick = { onOpenPlaylist(it.id) },
                                                 onNewPlaylist = { showNewPlaylist = true },
                                                 onFavoriteClick = { viewModel.playFromLibrary(it, SongSource.FAVORITES) },
@@ -479,6 +480,7 @@ internal fun LibrarySongRow(
     modifier: Modifier = Modifier,
     showTrackNumber: Boolean = false,
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    leadingContent: (@Composable () -> Unit)? = null,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     TrackRow(
@@ -487,6 +489,7 @@ internal fun LibrarySongRow(
         onClick = onClick,
         modifier = modifier,
         showTrackNumber = showTrackNumber,
+        leadingContent = leadingContent,
     ) {
         // Smaller glyphs inside full-size touch targets: the title stays the strongest element.
         PressIconButton(onClick = { actions.onToggleFavorite(song) }) {

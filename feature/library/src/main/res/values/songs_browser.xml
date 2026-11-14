@@ -1,0 +1,33 @@
+<resources>
+    <string name="songs_browser_title">Songs</string>
+    <string name="songs_browser_genre">Genre</string>
+    <string name="songs_browser_mood">Mood</string>
+    <string name="songs_browser_all_genres">All genres</string>
+    <string name="songs_browser_untagged">Untagged</string>
+    <string name="songs_browser_all_moods">All moods</string>
+    <string name="songs_browser_title_asc">Title · A–Z</string>
+    <string name="songs_browser_title_desc">Title · Z–A</string>
+    <string name="songs_browser_added">Recently added</string>
+    <string name="songs_browser_played">Recently played</string>
+    <string name="songs_browser_artist">Artist · A–Z</string>
+    <string name="songs_browser_album">Album · A–Z</string>
+    <string name="songs_browser_most_played">Most played</string>
+    <string name="songs_browser_chill">Chill</string>
+    <string name="songs_browser_high_energy">High energy</string>
+    <string name="songs_browser_late_night">Late night</string>
+    <string name="songs_browser_feel_good">Feel-good</string>
+    <string name="songs_browser_party">Party</string>
+    <string name="songs_browser_love">Love songs</string>
+    <string name="songs_browser_sad">Sad &amp; reflective</string>
+    <string name="songs_browser_dark">Dark</string>
+    <string name="songs_browser_focus">Focus</string>
+    <string name="songs_browser_throwback">Throwback</string>
+    <string name="songs_browser_sort">Sort songs</string>
+    <string name="songs_browser_search">Search songs</string>
+    <string name="songs_browser_clear">Clear filters</string>
+    <string name="songs_browser_no_matches">No songs match your filters.</string>
+    <string name="songs_browser_empty">No songs in your library yet.</string>
+    <string name="songs_browser_error">Could not load songs or saved filters.</string>
+    <string name="songs_browser_retry">Retry</string>
+    <string name="songs_browser_save_error">Could not save a selection or read date-added metadata. Please try again.</string>
+</resources>
