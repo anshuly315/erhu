@@ -2046,4 +2046,10 @@
         <item quantity="one">Se eliminó %1$d pista. No se pudo eliminar: %2$s</item>
         <item quantity="other">Se eliminaron %1$d pistas. No se pudo eliminar: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Abre erhu en tu teléfono y permite el acceso a la música.</string>
+    <string name="car_error_unavailable">Esta música ya no está disponible. Actualiza la biblioteca en tu teléfono.</string>
+    <string name="car_error_load">No se pudo cargar tu música. Abre erhu en tu teléfono e inténtalo de nuevo.</string>
+    <string name="car_error_no_results">No se encontró música coincidente en tu biblioteca.</string>
+    <string name="car_error_request">Esta solicitud de música no es compatible.</string>
+    <string name="car_open_phone">Abrir erhu en el teléfono</string>
 </resources>

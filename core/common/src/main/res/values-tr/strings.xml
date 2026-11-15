@@ -2043,4 +2043,10 @@
     <plurals name="delete_partial_failure">
         <item quantity="other">%1$d parça silindi. Silinemeyenler: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Telefonunuzda erhu uygulamasını açın ve müzik erişimine izin verin.</string>
+    <string name="car_error_unavailable">Bu müzik artık kullanılamıyor. Telefonunuzda arşivinizi yenileyin.</string>
+    <string name="car_error_load">Müziğiniz yüklenemedi. Telefonunuzda erhu uygulamasını açıp tekrar deneyin.</string>
+    <string name="car_error_no_results">Arşivinizde eşleşen müzik bulunamadı.</string>
+    <string name="car_error_request">Bu müzik isteği desteklenmiyor.</string>
+    <string name="car_open_phone">Telefonda erhu uygulamasını aç</string>
 </resources>

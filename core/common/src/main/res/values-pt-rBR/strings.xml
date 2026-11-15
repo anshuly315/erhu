@@ -2046,4 +2046,10 @@
         <item quantity="one">Excluída %1$d faixa. Não foi possível excluir: %2$s</item>
         <item quantity="other">Excluídas %1$d faixas. Não foi possível excluir: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Abra o erhu no celular e permita o acesso à música.</string>
+    <string name="car_error_unavailable">Esta música não está mais disponível. Atualize a biblioteca no celular.</string>
+    <string name="car_error_load">Não foi possível carregar sua música. Abra o erhu no celular e tente novamente.</string>
+    <string name="car_error_no_results">Nenhuma música correspondente foi encontrada na biblioteca.</string>
+    <string name="car_error_request">Esta solicitação de música não é compatível.</string>
+    <string name="car_open_phone">Abrir erhu no celular</string>
 </resources>

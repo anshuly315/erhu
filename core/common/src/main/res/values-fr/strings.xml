@@ -2092,4 +2092,10 @@
         <item quantity="many">%1$d pistes supprimées. Impossible de supprimer : %2$s</item>
         <item quantity="other">%1$d pistes supprimées. Impossible de supprimer : %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Ouvrez erhu sur votre téléphone et autorisez l’accès à la musique.</string>
+    <string name="car_error_unavailable">Cette musique n’est plus disponible. Actualisez votre bibliothèque sur votre téléphone.</string>
+    <string name="car_error_load">Impossible de charger votre musique. Ouvrez erhu sur votre téléphone et réessayez.</string>
+    <string name="car_error_no_results">Aucune musique correspondante n’a été trouvée dans votre bibliothèque.</string>
+    <string name="car_error_request">Cette demande de musique n’est pas prise en charge.</string>
+    <string name="car_open_phone">Ouvrir erhu sur le téléphone</string>
 </resources>

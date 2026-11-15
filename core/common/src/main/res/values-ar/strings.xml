@@ -2230,4 +2230,10 @@
         <item quantity="many">تم حذف %1$d مقطعاً. تعذر حذف: %2$s</item>
         <item quantity="other">تم حذف %1$d مقطع. تعذر حذف: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">افتح erhu على هاتفك واسمح بالوصول إلى الموسيقى.</string>
+    <string name="car_error_unavailable">لم تعد هذه الموسيقى متاحة. حدّث مكتبتك على هاتفك.</string>
+    <string name="car_error_load">تعذّر تحميل الموسيقى. افتح erhu على هاتفك وحاول مجددًا.</string>
+    <string name="car_error_no_results">لم يتم العثور على موسيقى مطابقة في مكتبتك.</string>
+    <string name="car_error_request">طلب الموسيقى هذا غير مدعوم.</string>
+    <string name="car_open_phone">فتح erhu على الهاتف</string>
 </resources>

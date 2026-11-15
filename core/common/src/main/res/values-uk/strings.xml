@@ -2138,4 +2138,10 @@
         <item quantity="many">Видалено %1$d треків. Не вдалося видалити: %2$s</item>
         <item quantity="other">Видалено %1$d треку. Не вдалося видалити: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Відкрийте erhu на телефоні й дозвольте доступ до музики.</string>
+    <string name="car_error_unavailable">Ця музика більше недоступна. Оновіть медіатеку на телефоні.</string>
+    <string name="car_error_load">Не вдалося завантажити музику. Відкрийте erhu на телефоні й повторіть спробу.</string>
+    <string name="car_error_no_results">У медіатеці не знайдено відповідної музики.</string>
+    <string name="car_error_request">Цей музичний запит не підтримується.</string>
+    <string name="car_open_phone">Відкрити erhu на телефоні</string>
 </resources>

@@ -2093,4 +2093,10 @@
         <item quantity="few">S-au șters %1$d fișiere. Nu s-a putut șterge: %2$s</item>
         <item quantity="other">S-au șters %1$d de fișiere. Nu s-a putut șterge: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Deschide erhu pe telefon și permite accesul la muzică.</string>
+    <string name="car_error_unavailable">Această muzică nu mai este disponibilă. Actualizează biblioteca pe telefon.</string>
+    <string name="car_error_load">Muzica nu a putut fi încărcată. Deschide erhu pe telefon și încearcă din nou.</string>
+    <string name="car_error_no_results">Nu s-a găsit muzică potrivită în bibliotecă.</string>
+    <string name="car_error_request">Această solicitare muzicală nu este acceptată.</string>
+    <string name="car_open_phone">Deschide erhu pe telefon</string>
 </resources>

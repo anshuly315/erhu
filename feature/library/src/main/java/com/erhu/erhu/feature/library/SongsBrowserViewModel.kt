@@ -88,7 +88,7 @@ class SongsBrowserViewModel
 
         private val moodContext =
             combine(theme.vybeEnabled, visible, engine.catalogVersion, engine.status) { enabled, shown, version, status ->
-                MoodContext(enabled != false, shown, version, status is VybeStatus.Ready)
+                MoodContext(enabled == true, shown, version, status is VybeStatus.Ready)
             }
 
         private data class MoodKey(
@@ -104,7 +104,7 @@ class SongsBrowserViewModel
         init {
             viewModelScope.launch {
                 combine(options, theme.vybeEnabled, visible) { prefs, enabled, shown ->
-                    shown && enabled != false && prefs != null && prefs.mood != SongsMood.ALL
+                    shown && enabled == true && prefs != null && prefs.mood != SongsMood.ALL
                 }.distinctUntilChanged().collect { needed ->
                     if (needed) {
                         ownsModel = true

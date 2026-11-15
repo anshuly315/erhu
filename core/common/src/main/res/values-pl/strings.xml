@@ -2138,4 +2138,10 @@
         <item quantity="many">Usunięto %1$d utworów. Nie udało się usunąć: %2$s</item>
         <item quantity="other">Usunięto %1$d utworu. Nie udało się usunąć: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Otwórz erhu na telefonie i zezwól na dostęp do muzyki.</string>
+    <string name="car_error_unavailable">Ta muzyka nie jest już dostępna. Odśwież bibliotekę na telefonie.</string>
+    <string name="car_error_load">Nie udało się wczytać muzyki. Otwórz erhu na telefonie i spróbuj ponownie.</string>
+    <string name="car_error_no_results">Nie znaleziono pasującej muzyki w bibliotece.</string>
+    <string name="car_error_request">To żądanie muzyki nie jest obsługiwane.</string>
+    <string name="car_open_phone">Otwórz erhu na telefonie</string>
 </resources>

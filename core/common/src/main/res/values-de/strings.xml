@@ -2046,4 +2046,10 @@
         <item quantity="one">%1$d Track gelöscht. Konnte nicht gelöscht werden: %2$s</item>
         <item quantity="other">%1$d Tracks gelöscht. Konnte nicht gelöscht werden: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Öffne erhu auf deinem Smartphone und erlaube den Zugriff auf Musik.</string>
+    <string name="car_error_unavailable">Diese Musik ist nicht mehr verfügbar. Aktualisiere die Mediathek auf deinem Smartphone.</string>
+    <string name="car_error_load">Deine Musik konnte nicht geladen werden. Öffne erhu auf deinem Smartphone und versuche es erneut.</string>
+    <string name="car_error_no_results">In deiner Mediathek wurde keine passende Musik gefunden.</string>
+    <string name="car_error_request">Diese Musikanfrage wird nicht unterstützt.</string>
+    <string name="car_open_phone">erhu auf dem Smartphone öffnen</string>
 </resources>

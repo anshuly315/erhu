@@ -2000,4 +2000,10 @@
     <plurals name="delete_partial_failure">
         <item quantity="other">%1$d 件のファイルを削除しました。削除できなかったファイル: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">スマートフォンで erhu を開き、音楽へのアクセスを許可してください。</string>
+    <string name="car_error_unavailable">この音楽は利用できなくなりました。スマートフォンでライブラリを更新してください。</string>
+    <string name="car_error_load">音楽を読み込めませんでした。スマートフォンで erhu を開いて、もう一度お試しください。</string>
+    <string name="car_error_no_results">ライブラリに一致する音楽が見つかりませんでした。</string>
+    <string name="car_error_request">この音楽リクエストには対応していません。</string>
+    <string name="car_open_phone">スマートフォンで erhu を開く</string>
 </resources>

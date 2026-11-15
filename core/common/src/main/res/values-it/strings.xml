@@ -2046,4 +2046,10 @@
         <item quantity="one">Eliminato %1$d brano. Impossibile eliminare: %2$s</item>
         <item quantity="other">Eliminati %1$d brani. Impossibile eliminare: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Apri erhu sul telefono e consenti l’accesso alla musica.</string>
+    <string name="car_error_unavailable">Questa musica non è più disponibile. Aggiorna la libreria sul telefono.</string>
+    <string name="car_error_load">Impossibile caricare la musica. Apri erhu sul telefono e riprova.</string>
+    <string name="car_error_no_results">Nessuna musica corrispondente trovata nella libreria.</string>
+    <string name="car_error_request">Questa richiesta musicale non è supportata.</string>
+    <string name="car_open_phone">Apri erhu sul telefono</string>
 </resources>

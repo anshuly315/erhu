@@ -2046,4 +2046,10 @@
         <item quantity="one">%1$d nummer verwijderd. Kon niet worden verwijderd: %2$s</item>
         <item quantity="other">%1$d nummers verwijderd. Kon niet worden verwijderd: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Open erhu op je telefoon en sta toegang tot muziek toe.</string>
+    <string name="car_error_unavailable">Deze muziek is niet meer beschikbaar. Vernieuw je bibliotheek op je telefoon.</string>
+    <string name="car_error_load">Je muziek kon niet worden geladen. Open erhu op je telefoon en probeer het opnieuw.</string>
+    <string name="car_error_no_results">Er is geen overeenkomende muziek gevonden in je bibliotheek.</string>
+    <string name="car_error_request">Dit muziekverzoek wordt niet ondersteund.</string>
+    <string name="car_open_phone">erhu openen op telefoon</string>
 </resources>

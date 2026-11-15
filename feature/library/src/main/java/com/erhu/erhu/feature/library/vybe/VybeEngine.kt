@@ -379,7 +379,10 @@ class VybeEngine
             private const val TAG = "VybeEngine"
             const val MODEL_FILE = "vybe/embedding_gemma.task"
             private const val INDEX_FILE = "vybe/index.bin"
-            private const val MODEL_ID = "embeddinggemma-300m-int4int8|doc${VybeText.DOCUMENT_VERSION}"
+
+            // Old manual imports were not hash-verified: do not reuse their potentially incompatible vectors.
+            private const val MODEL_ID =
+                "embeddinggemma-300m-int4int8|${VybeModelStore.MODEL_SHA256}|doc${VybeText.DOCUMENT_VERSION}"
             private const val APPEND_BATCH = 8
             private const val COMPACT_RATIO = 2
             private const val COMPACT_SLACK = 64

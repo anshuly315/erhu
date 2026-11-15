@@ -1,13 +1,13 @@
 ## VYBE setup
 
 - VYBE now downloads and installs the correct on-device model directly from GitHub. No manual model hunting or file selection is needed.
-- Added download progress, cancellation, resumable transfers, retries, storage checks and checksum verification. Already installed, verified models are reused.
+- Added download progress, cancellation, resumable transfers, retries, storage checks and checksum verification. Already installed, verified models are reused. Older recommendation indexes are rebuilt once against the verified model.
 
 ## Library and playback
 
 - Added a dedicated Songs page from Library > Songs > More, with search, saved sorting, genre and mood filters.
 - Added drag-and-drop playlist track reordering with persistent order and support for duplicate tracks.
-- Added Android Auto library browsing and search-and-play through the existing playback service.
+- Added Android Auto library browsing and search-and-play through the existing playback service, with translated setup and error messages.
 
 ## Appearance and performance
 

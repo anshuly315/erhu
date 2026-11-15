@@ -2000,4 +2000,10 @@
     <plurals name="delete_partial_failure">
         <item quantity="other">Berhasil menghapus %1$d berkas. Tidak dapat menghapus: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Buka erhu di ponsel Anda dan izinkan akses ke musik.</string>
+    <string name="car_error_unavailable">Musik ini tidak lagi tersedia. Muat ulang pustaka di ponsel Anda.</string>
+    <string name="car_error_load">Musik tidak dapat dimuat. Buka erhu di ponsel Anda dan coba lagi.</string>
+    <string name="car_error_no_results">Tidak ada musik yang cocok di pustaka Anda.</string>
+    <string name="car_error_request">Permintaan musik ini tidak didukung.</string>
+    <string name="car_open_phone">Buka erhu di ponsel</string>
 </resources>

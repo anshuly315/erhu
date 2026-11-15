@@ -2000,4 +2000,10 @@
     <plurals name="delete_partial_failure">
         <item quantity="other">ลบแล้ว %1$d ไฟล์ ไม่สามารถลบได้: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">เปิด erhu บนโทรศัพท์และอนุญาตให้เข้าถึงเพลง</string>
+    <string name="car_error_unavailable">เพลงนี้ไม่พร้อมใช้งานแล้ว โปรดรีเฟรชคลังเพลงบนโทรศัพท์</string>
+    <string name="car_error_load">โหลดเพลงไม่ได้ โปรดเปิด erhu บนโทรศัพท์แล้วลองอีกครั้ง</string>
+    <string name="car_error_no_results">ไม่พบเพลงที่ตรงกันในคลังเพลงของคุณ</string>
+    <string name="car_error_request">ไม่รองรับคำขอเพลงนี้</string>
+    <string name="car_open_phone">เปิด erhu บนโทรศัพท์</string>
 </resources>

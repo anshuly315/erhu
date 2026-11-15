@@ -2047,4 +2047,10 @@
         <item quantity="one">Raderade %1$d spår. Kunde inte ta bort: %2$s</item>
         <item quantity="other">Raderade %1$d spår. Kunde inte ta bort: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Öppna erhu på telefonen och tillåt åtkomst till musik.</string>
+    <string name="car_error_unavailable">Den här musiken är inte längre tillgänglig. Uppdatera biblioteket på telefonen.</string>
+    <string name="car_error_load">Det gick inte att läsa in musiken. Öppna erhu på telefonen och försök igen.</string>
+    <string name="car_error_no_results">Ingen matchande musik hittades i biblioteket.</string>
+    <string name="car_error_request">Den här musikförfrågan stöds inte.</string>
+    <string name="car_open_phone">Öppna erhu på telefonen</string>
 </resources>

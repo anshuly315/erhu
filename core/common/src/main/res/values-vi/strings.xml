@@ -2000,4 +2000,10 @@
     <plurals name="delete_partial_failure">
         <item quantity="other">Đã xóa %1$d tệp. Không thể xóa: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">Mở erhu trên điện thoại và cho phép truy cập nhạc.</string>
+    <string name="car_error_unavailable">Nhạc này không còn khả dụng. Hãy làm mới thư viện trên điện thoại.</string>
+    <string name="car_error_load">Không thể tải nhạc. Mở erhu trên điện thoại và thử lại.</string>
+    <string name="car_error_no_results">Không tìm thấy nhạc phù hợp trong thư viện.</string>
+    <string name="car_error_request">Yêu cầu nhạc này không được hỗ trợ.</string>
+    <string name="car_open_phone">Mở erhu trên điện thoại</string>
 </resources>

@@ -2000,4 +2000,10 @@
     <plurals name="delete_partial_failure">
         <item quantity="other">%1$d개 파일을 삭제했습니다. 삭제할 수 없음: %2$s</item>
     </plurals>
+    <string name="car_error_music_access">휴대전화에서 erhu를 열고 음악 접근을 허용하세요.</string>
+    <string name="car_error_unavailable">이 음악은 더 이상 사용할 수 없습니다. 휴대전화에서 라이브러리를 새로고침하세요.</string>
+    <string name="car_error_load">음악을 불러올 수 없습니다. 휴대전화에서 erhu를 열고 다시 시도하세요.</string>
+    <string name="car_error_no_results">라이브러리에서 일치하는 음악을 찾지 못했습니다.</string>
+    <string name="car_error_request">이 음악 요청은 지원되지 않습니다.</string>
+    <string name="car_open_phone">휴대전화에서 erhu 열기</string>
 </resources>
