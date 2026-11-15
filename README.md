@@ -106,7 +106,7 @@ Music, Glass and Vinyl playback controls, shown with real artwork and track info
 
 VYBE searches your library using descriptions of what you want to hear. It runs on the device and needs a separate EmbeddingGemma model.
 
-Download the [VYBE model pack](https://github.com/lochanpthakke/erhu/releases/download/v1.0.19-beta.33/vybe-embeddinggemma-300m-int4int8.zip), read the included model terms, and extract `embedding_gemma.task`. Open **VYBE** in erhu, tap **Choose model file**, and select the extracted file. Leave the app open while it indexes your library.
+Open **VYBE** in erhu. The app downloads the exact `vybe-embeddinggemma-300m-int4int8.zip` model pack from its [GitHub release](https://github.com/lochanpthakke/erhu/releases/tag/erhu-v1.0.20-beta.40), verifies the archive and model checksums, and installs it automatically. Progress, cancellation, retry and resumable downloads are supported. Existing verified models are reused. Leave the app open while it indexes your library; model terms and notices are preserved with the installation.
 
 The model is about 184 MB before compression. It is supplied under Google's Gemma Terms of Use, separately from erhu's GPL-3.0 licence. See [VYBE setup](docs/vybe-setup.md) for the model source, checksum and terms.
 

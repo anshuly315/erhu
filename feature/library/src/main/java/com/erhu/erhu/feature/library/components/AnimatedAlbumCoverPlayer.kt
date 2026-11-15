@@ -70,6 +70,18 @@ class CoverVideoHost(
     private var path: String? = null
     private var views = 0
     private val main = Handler(Looper.getMainLooper())
+    private var resumePath: String? = null
+    private var resumePosition = 0L
+    private val releaseUnused =
+        Runnable {
+            if (views == 0) {
+                resumePath = path
+                resumePosition = built?.currentPosition ?: 0L
+                built?.release()
+                built = null
+                path = null
+            }
+        }
 
     val player: ExoPlayer
         get() = built ?: buildCoverPlayer(context).also { built = it }
@@ -79,17 +91,25 @@ class CoverVideoHost(
         if (filePath == path) return
         path = filePath
         player.setMediaItem(MediaItem.fromUri(filePath))
+        if (resumePath == filePath) player.seekTo(resumePosition)
         player.prepare()
     }
 
     internal fun attached() {
+        main.removeCallbacks(releaseUnused)
         views++
     }
 
     /** Pauses once no view is left (checked after the frame, when a new card may have taken over). */
     internal fun detached() {
         views--
-        main.post { if (views == 0) built?.pause() }
+        main.post {
+            if (views == 0) {
+                built?.pause()
+                main.removeCallbacks(releaseUnused)
+                main.postDelayed(releaseUnused, COVER_RELEASE_DELAY_MS)
+            }
+        }
     }
 
     fun release() {
@@ -97,6 +117,8 @@ class CoverVideoHost(
         built?.release()
         built = null
         path = null
+        resumePath = null
+        resumePosition = 0L
     }
 }
 
@@ -142,7 +164,9 @@ fun AnimatedAlbumCoverPlayer(
     host: CoverVideoHost? = null,
     staticCover: @Composable () -> Unit,
 ) {
-    val video = filePath?.takeIf { it.isNotBlank() && File(it).exists() }
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow
+        .collectAsState()
+    val video = filePath?.takeIf { lifecycleState.isAtLeast(Lifecycle.State.STARTED) && it.isNotBlank() && File(it).exists() }
     Box(modifier = modifier) {
         staticCover()
         if (video != null) LoopingCoverVideo(host ?: rememberCoverVideoHost(), video, isPlaying)
@@ -161,7 +185,7 @@ private fun LoopingCoverVideo(
     var videoSize by remember { mutableStateOf(VideoSize.UNKNOWN) }
     val exoPlayer = host.player
 
-    DisposableEffect(host) {
+    DisposableEffect(host, lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_START) {
@@ -195,11 +219,11 @@ private fun LoopingCoverVideo(
         // Covers downloaded before the fetcher did this still start at 10 s: fixed once, in place.
         withContext(Dispatchers.IO) { runCatching { FragmentedMp4Timeline.startAtZero(File(filePath)) } }
         host.show(filePath)
-        if (playing) exoPlayer.play()
+        if (playing && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) exoPlayer.play()
     }
 
-    LaunchedEffect(isPlaying) {
-        if (isPlaying) exoPlayer.play() else exoPlayer.pause()
+    LaunchedEffect(isPlaying, lifecycleOwner) {
+        if (isPlaying && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) exoPlayer.play() else exoPlayer.pause()
     }
 
     val videoAlpha by animateFloatAsState(
@@ -307,3 +331,5 @@ fun rememberAnimatedArtworkPath(
         AnimatedArtOrientation.TALL_3_4 -> current.tallFilePath ?: current.squareFilePath
     }
 }
+
+private const val COVER_RELEASE_DELAY_MS = 2_000L

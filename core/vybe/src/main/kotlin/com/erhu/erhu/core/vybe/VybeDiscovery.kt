@@ -209,7 +209,11 @@ class VybeDiscovery(
     }
 
     /** A confidence-bounded mood set, never an artist/title lookup or arbitrary top-N. */
-    fun moodMatches(query: String, songs: List<SongText>): Set<Long>? {
+    @Suppress("ReturnCount")
+    fun moodMatches(
+        query: String,
+        songs: List<SongText>,
+    ): Set<Long>? {
         if (songs.isEmpty()) return null
         val vector = embedder.embed(query, EmbeddingRole.QUERY)
         val allowed = songs.map { it.songId }.toSet()
@@ -217,7 +221,11 @@ class VybeDiscovery(
         if (ranked.size != songs.size || isWeak(ranked.map { it.score })) return null
         val scores = ranked.map { it.score }.sortedDescending()
         val threshold = maxOf(WEAK_BEST, scores[scores.size / 2] + WEAK_SPREAD)
-        return ranked.filter { it.score >= threshold }.map { it.songId }.toSet().takeIf { it.isNotEmpty() }
+        return ranked
+            .filter { it.score >= threshold }
+            .map { it.songId }
+            .toSet()
+            .takeIf { it.isNotEmpty() }
     }
 
     private fun describe(

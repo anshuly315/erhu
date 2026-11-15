@@ -1,0 +1,12 @@
+<resources>
+    <string name="vybe_download_title">Download Vybe model</string>
+    <string name="vybe_download_explanation">Erhu downloads the correct model from GitHub (144 MB). Recommendations stay on your device. Google Gemma Terms of Use apply.</string>
+    <string name="vybe_download_installing">Verifying and installing the Vybe model…</string>
+    <string name="vybe_download_waiting">Waiting for network or retrying the download…</string>
+    <string name="vybe_download_progress">Downloading Vybe: %1$s / 144.3 MB</string>
+    <string name="vybe_download_storage_error">Not enough storage to install Vybe. Free at least 360 MB, then try again. Your partial download is kept.</string>
+    <string name="vybe_download_network_error">The model download was interrupted. Check your connection and try again; downloaded bytes will be reused.</string>
+    <string name="vybe_download_invalid_error">The model did not match the verified release. Try downloading it again.</string>
+    <string name="vybe_download_missing_error">The exact Vybe model is unavailable in this release. Please try again later or update Erhu.</string>
+    <string name="vybe_download_install_error">The model could not be installed. Please try again.</string>
+</resources>

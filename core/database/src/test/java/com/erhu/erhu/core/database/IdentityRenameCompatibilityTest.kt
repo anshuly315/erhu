@@ -16,6 +16,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class IdentityRenameCompatibilityTest {
     @Test
+    @Suppress("LongMethod", "NestedBlockDepth")
     fun renamedDatabaseOpensExistingSchemaAndRetainsEveryTable() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val schema = context.assets.open("com.erhu.erhu.core.database.ErhuDatabase/14.json").bufferedReader().use {
@@ -51,7 +52,10 @@ class IdentityRenameCompatibilityTest {
             legacy.version = 14
             names.associateWith { table -> legacy.rawQuery("SELECT * FROM `$table`", null).use(::rows) }
         }
-        val renamed = Room.databaseBuilder(context, ErhuDatabase::class.java, fileName).addMigrations(MIGRATION_14_15, MIGRATION_15_16).allowMainThreadQueries().build()
+        val renamed = Room.databaseBuilder(context, ErhuDatabase::class.java, fileName)
+            .addMigrations(MIGRATION_14_15, MIGRATION_15_16)
+            .allowMainThreadQueries()
+            .build()
         try {
             val db = renamed.openHelper.readableDatabase
             val after = names.associateWith { table ->

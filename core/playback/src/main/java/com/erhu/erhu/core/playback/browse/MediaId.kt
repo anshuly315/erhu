@@ -19,14 +19,28 @@ object MediaId {
     const val SEARCH_PREFIX = "search:"
 
     /** Browser-only identity. The actual player continues to receive numeric song IDs. */
-    data class TrackTarget(val parentId: String, val songId: Long, val position: Int?)
+    data class TrackTarget(
+        val parentId: String,
+        val songId: Long,
+        val position: Int?,
+    )
 
-    fun track(parentId: String, songId: Long, position: Int? = null): String =
-        Uri.Builder().scheme("erhu").authority("track")
-            .appendPath(parentId).appendPath(songId.toString())
+    fun track(
+        parentId: String,
+        songId: Long,
+        position: Int? = null,
+    ): String =
+        Uri
+            .Builder()
+            .scheme("erhu")
+            .authority("track")
+            .appendPath(parentId)
+            .appendPath(songId.toString())
             .apply { position?.let { appendPath(it.toString()) } }
-            .build().toString()
+            .build()
+            .toString()
 
+    @Suppress("ReturnCount", "MagicNumber")
     fun parseTrack(id: String): TrackTarget? {
         val uri = Uri.parse(id)
         if (uri.scheme != "erhu" || uri.authority != "track") return null

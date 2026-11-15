@@ -231,7 +231,8 @@ class MediaStoreScanner
                                     trackNumber = trackNumber,
                                     year = year,
                                     dateModified = dateModified,
-                                    dateAddedMs = c.getLong(dateAddedColumn).takeIf { it > 0 && it <= Long.MAX_VALUE / 1000 }?.times(1000) ?: -1L,
+                                    dateAddedMs =
+                                        c.getLong(dateAddedColumn).takeIf { it > 0 && it <= Long.MAX_VALUE / 1000 }?.times(1000) ?: -1L,
                                     artworkUri = artworkUri,
                                 )
 

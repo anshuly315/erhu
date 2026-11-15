@@ -1,7 +1,5 @@
 package com.erhu.erhu.feature.library.vybe
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,8 +36,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -101,10 +99,6 @@ fun VybeScreen(
     val message by viewModel.message.collectAsState()
     var text by rememberSaveable { mutableStateOf("") }
     val focus = LocalFocusManager.current
-    val pickModel =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            uri?.let(viewModel::importModel)
-        }
 
     LaunchedEffect(Unit) { viewModel.start() }
     DisposableEffect(Unit) {
@@ -162,7 +156,7 @@ fun VybeScreen(
                     keyboardActions = KeyboardActions(onSearch = { submit(text) }),
                 )
                 Spacer(Modifier.height(Spacing.sm))
-                StatusLine(status, timings, onPickModel = { pickModel.launch(arrayOf("*/*")) }, onRetry = viewModel::start)
+                StatusLine(status, timings, onRetry = viewModel::start, onCancel = viewModel::cancelDownload)
                 message?.let {
                     Text(it, style = TextStyles.metadata, color = MaterialTheme.colorScheme.primary)
                     LaunchedEffect(it) {
@@ -252,7 +246,7 @@ fun VybeScreen(
                     )
                     if (result.reasons.isNotEmpty()) {
                         Text(
-                            result.reasons.joinToString(" · "),
+                            result.reasons.joinToString(" Â· "),
                             style = TextStyles.metadata,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -270,12 +264,31 @@ fun VybeScreen(
 private fun StatusLine(
     status: VybeStatus,
     timings: VybeTimings,
-    onPickModel: () -> Unit,
     onRetry: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     val locale = AppLocaleManager.activeLocale(LocalContext.current)
     when (status) {
-        VybeStatus.NoModel -> NoModelStatusCard(onPickModel)
+        VybeStatus.NoModel ->
+            Column {
+                Text(stringResource(com.erhu.erhu.feature.library.R.string.vybe_download_explanation))
+                Button(onClick = onRetry) { Text(stringResource(com.erhu.erhu.feature.library.R.string.vybe_download_title)) }
+            }
+        is VybeStatus.Downloading ->
+            Column {
+                val label =
+                    when {
+                        status.installing -> stringResource(com.erhu.erhu.feature.library.R.string.vybe_download_installing)
+                        status.waiting -> stringResource(com.erhu.erhu.feature.library.R.string.vybe_download_waiting)
+                        else ->
+                            stringResource(
+                                com.erhu.erhu.feature.library.R.string.vybe_download_progress,
+                                LocaleFormatters.formatDecimal(status.bytes / (1024.0 * 1024.0), decimals = 1, locale = locale),
+                            )
+                    }
+                ProgressLine(label, if (status.installing || status.waiting) null else status.bytes.toFloat() / status.total)
+                TextButton(onClick = onCancel) { Text(stringResource(CommonR.string.action_cancel)) }
+            }
         VybeStatus.LoadingModel -> ProgressLine(stringResource(CommonR.string.vybe_loading_model), null)
         is VybeStatus.Indexing -> IndexingProgressStatus(status, timings, locale)
         is VybeStatus.Ready -> ReadyStatusText(status.songs, timings.lastQueryMs, locale)
@@ -284,23 +297,6 @@ private fun StatusLine(
                 Text(status.message, style = TextStyles.supporting, color = MaterialTheme.colorScheme.error)
                 OutlinedButton(onClick = onRetry) { Text(stringResource(CommonR.string.action_try_again)) }
             }
-    }
-}
-
-@Composable
-private fun NoModelStatusCard(onPickModel: () -> Unit) {
-    Surface(shape = Radius.largeShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-        Column(modifier = Modifier.padding(Spacing.lg)) {
-            Text(stringResource(CommonR.string.vybe_no_model_title), style = TextStyles.itemTitle)
-            Spacer(Modifier.height(Spacing.xs))
-            Text(
-                stringResource(CommonR.string.vybe_no_model_body),
-                style = TextStyles.supporting,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            Button(onClick = onPickModel) { Text(stringResource(CommonR.string.vybe_choose_model_file)) }
-        }
     }
 }
 

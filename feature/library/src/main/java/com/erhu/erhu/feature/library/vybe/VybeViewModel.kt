@@ -1,7 +1,6 @@
 package com.erhu.erhu.feature.library.vybe
 
 import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erhu.erhu.core.common.locale.AppLocaleManager
@@ -120,19 +119,8 @@ class VybeViewModel
 
         fun setVisible(visible: Boolean) = engine.setScreenVisible(visible)
 
-        fun importModel(uri: Uri) {
-            viewModelScope.launch {
-                engine.importModel(uri).onFailure { error ->
-                    _message.value =
-                        localized().getString(
-                            CommonR.string.vybe_error_copy_model,
-                            error.message.orEmpty(),
-                        )
-                }
-            }
-        }
+        fun cancelDownload() = engine.cancelDownload()
 
-        /** Runs [text] (submitted, never per keystroke). */
         fun submit(text: String) {
             val query = text.trim()
             if (query.isEmpty()) return

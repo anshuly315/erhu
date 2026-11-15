@@ -38,9 +38,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -539,8 +543,24 @@ internal fun HeroAnimatedArtwork(
     // Remembered: the card recomposes during the player's motion; a new flow each time would resubscribe.
     val albumId by remember(libraryRepository, song.id) { libraryRepository.getAlbumIdForSong(song.id) }
         .collectAsState(initial = null)
+    val transition = LocalPlayerTransition.current
+    val visible by remember(transition) {
+        derivedStateOf { transition == null || transition.fraction > 0f }
+    }
+    val settled by remember(transition) {
+        derivedStateOf { transition == null || transition.isSettledOpen }
+    }
+    var showVideo by remember(transition) { mutableStateOf(transition == null) }
+    LaunchedEffect(visible, settled) {
+        if (!visible) {
+            showVideo = false
+        } else if (settled) {
+            showVideo = true
+        }
+    }
+    val livePath = rememberAnimatedArtworkPath(albumId, animatedArtworkRepository)
     AnimatedAlbumCoverPlayer(
-        filePath = rememberAnimatedArtworkPath(albumId, animatedArtworkRepository),
+        filePath = livePath.takeIf { showVideo && visible },
         isPlaying = isPlaying,
         modifier = modifier,
         host = coverVideo,

@@ -274,10 +274,11 @@ fun NowPlayingScreen(
         // Draw outside both the animated graphics layer and the recorded glass source.
         // If a device drops either decorative layer, the library still cannot show through.
         Box(
-            modifier = Modifier.fillMaxSize().drawBehind {
-                val reveal = ((transition?.fraction ?: 1f) / BACKDROP_REVEAL_END).coerceIn(0f, 1f)
-                drawRect(opaquePlayerBackground.copy(alpha = reveal))
-            },
+            modifier =
+                Modifier.fillMaxSize().drawBehind {
+                    val reveal = ((transition?.fraction ?: 1f) / BACKDROP_REVEAL_END).coerceIn(0f, 1f)
+                    drawRect(opaquePlayerBackground.copy(alpha = reveal))
+                },
         )
         Box(
             modifier =

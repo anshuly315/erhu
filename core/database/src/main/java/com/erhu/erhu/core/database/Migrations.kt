@@ -4,11 +4,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /** Preserve the library; old rows are backfilled from MediaStore on the Songs page. */
-val MIGRATION_15_16 = object : Migration(15, 16) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE `songs` ADD COLUMN `date_added_ms` INTEGER NOT NULL DEFAULT 0")
+@Suppress("MagicNumber")
+val MIGRATION_15_16 =
+    object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `songs` ADD COLUMN `date_added_ms` INTEGER NOT NULL DEFAULT 0")
+        }
     }
-}
 
 /**
  * v14 â†’ v15: separate playlist display order from each entry's permanent position identity.

@@ -1,19 +1,23 @@
-## Changes
+## VYBE setup
 
-- Added full localization support across 20 languages (English, Arabic, German, Spanish, French, Indonesian, Italian, Japanese, Korean, Dutch, Polish, Portuguese (Brazil), Romanian, Russian, Swedish, Thai, Turkish, Ukrainian, Vietnamese, and Simplified Chinese).
-- Added "System default" as the first option in onboarding language selection, dynamically showing the device language status.
-- Renamed "Delete Music" to "Delete song" across all menus and dialogs with updated translations in all supported languages.
-- Fixed Now Playing expand and minimize transitions: eliminated the black background bar and clipping artifacts to keep the player backdrop continuously visible.
-- Fixed album artwork resizing during expand and collapse animations: maintained strict 1:1 aspect ratio with smooth uniform scaling and coordinated corner radius morphing into the mini-player thumbnail.
+- VYBE now downloads and installs the correct on-device model directly from GitHub. No manual model hunting or file selection is needed.
+- Added download progress, cancellation, resumable transfers, retries, storage checks and checksum verification. Already installed, verified models are reused.
 
-## Installation
+## Library and playback
 
-Download `erhu-1.0.19-arm64-v8a.apk`. This ARM64 beta supports Android 8.0 and newer. The original application ID and signing certificate are preserved for in-place updates. Existing users can revisit onboarding through Diagnostics & About > Introduction.
+- Added a dedicated Songs page from Library > Songs > More, with search, saved sorting, genre and mood filters.
+- Added drag-and-drop playlist track reordering with persistent order and support for duplicate tracks.
+- Added Android Auto library browsing and search-and-play through the existing playback service.
 
-Built and verified through GitHub Actions, including formatting/static analysis, unit tests, release lint and package/signature checks.
+## Appearance and performance
 
-## VYBE model
+- Simplified Settings with a plain layout that matches the rest of the app.
+- Strengthened the Now Playing background to address transparent player screens reported on some Redmi devices.
+- Cached the static blurred artwork backdrop to reduce repeated glass-rendering work. Focused emulator measurements showed substantially fewer janky frames during steady live-artwork rendering; physical-device results may vary.
+- Live artwork keeps its original quality, starts after the player expansion settles, and releases video resources shortly after becoming invisible or leaving the foreground.
 
-The existing `vybe-embeddinggemma-300m-int4int8.zip` model pack and its `.sha256` checksum are preserved unchanged below. Read the included README, NOTICE and Gemma terms, extract `embedding_gemma.task`, then open VYBE and select **Choose model file**. Leave erhu open while it indexes your library.
+## Installation and model
 
-The model is distributed separately under Google's Gemma Terms of Use. Previous release downloads remain available for rollback.
+Download `erhu-1.0.20-arm64-v8a.apk` for Android 8.0 and newer. The original application ID and signing certificate are preserved for in-place updates.
+
+The unchanged `vybe-embeddinggemma-300m-int4int8.zip` model pack (144.3 MiB) and its checksum are attached below. Erhu downloads this exact release asset automatically. The model remains separately licensed under Google’s Gemma Terms of Use, with the original terms and notices included. Previous releases remain available for rollback.

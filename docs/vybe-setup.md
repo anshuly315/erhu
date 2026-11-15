@@ -4,13 +4,15 @@ This pack contains Google's unmodified EmbeddingGemma 300m int4/int8 MediaPipe m
 
 ## Setup
 
-1. Read the included GEMMA_TERMS.html and the Gemma Prohibited Use Policy at https://ai.google.dev/gemma/prohibited_use_policy.
-2. Extract embedding_gemma.task from this ZIP into your phone's Downloads folder.
-3. Open erhu and select the VYBE tab.
-4. Tap Choose model file and select embedding_gemma.task. Select the extracted file, not this ZIP.
-5. Leave erhu open while it loads the model and indexes your library.
+1. Open the VYBE tab in erhu 1.0.20 or newer.
+2. The app downloads the exact 144.3 MiB model ZIP from its GitHub release, showing progress. Cancellation keeps partial download bytes for retry; network interruptions are retried in the background.
+3. Erhu verifies the ZIP and extracted model against fixed SHA-256 hashes, then atomically installs the model in private storage. Existing exact models are reused. Insufficient space or missing release assets are reported without substituting another model.
+4. Leave erhu open while the local model loads and indexes the library. Inference remains on the device.
 
-The app copies the model into private storage. Discovery and indexing run on the device. No separate VYBE APK is needed.
+The pack retains README.md, NOTICE.txt and GEMMA_TERMS.html; the app preserves these files with the model. Read the terms and the [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy). Older app versions required manual extraction and model-file selection; current versions do not.
+
+Release asset: `vybe-embeddinggemma-300m-int4int8.zip` (151298779 bytes).
+Archive SHA-256: `c6d522f014c00910726afbb43b6756026ca35f4000741953d7800b2ff5e45f1f`.
 
 ## Model information
 

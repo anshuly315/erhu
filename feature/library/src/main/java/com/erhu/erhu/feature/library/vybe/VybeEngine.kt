@@ -1,7 +1,6 @@
 package com.erhu.erhu.feature.library.vybe
 
 import android.content.Context
-import android.net.Uri
 import android.os.SystemClock
 import com.erhu.erhu.core.common.locale.AppLocaleManager
 import com.erhu.erhu.core.common.logging.Logger
@@ -42,7 +41,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import java.io.File
-import java.io.IOException
 import java.util.concurrent.Executors
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -51,10 +49,17 @@ import com.erhu.erhu.core.common.R as CommonR
 
 /** Where VYBE stands. */
 sealed interface VybeStatus {
-    /** The model file hasn't been supplied (see [VybeEngine.importModel]). */
+    /** No verified model is installed yet. */
     data object NoModel : VybeStatus
 
     data object LoadingModel : VybeStatus
+
+    data class Downloading(
+        val bytes: Long,
+        val total: Long,
+        val installing: Boolean = false,
+        val waiting: Boolean = false,
+    ) : VybeStatus
 
     /** Songs are being described and embedded on the device; search works on the [done] ones. */
     data class Indexing(
@@ -79,7 +84,7 @@ data class VybeTimings(
 )
 
 /**
- * VYBE on the device: loads EmbeddingGemma (a file the user supplied, kept in app storage),
+ * VYBE on the device: loads EmbeddingGemma (the verified GitHub release bundle, kept in app storage),
  * keeps a vector index of the library's song descriptions up to date, and answers queries.
  *
  * - Everything model- and index-related runs on one background thread, in order: MediaPipe's
@@ -98,6 +103,7 @@ class VybeEngine
         @ApplicationContext private val context: Context,
         private val libraryRepository: LibraryRepository,
         private val logger: Logger,
+        private val models: VybeModelStore,
     ) {
         private val dispatcher = Executors.newSingleThreadExecutor { Thread(it, "vybe").apply { isDaemon = true } }.asCoroutineDispatcher()
         private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -135,11 +141,12 @@ class VybeEngine
             }
         }
 
-        /** Starts (once) loading the model and indexing; called when VYBE is opened. */
+        /** Acquires the exact model if missing, then loads and indexes it once. */
         fun start() {
-            if (started?.isActive == true || !modelFile().isFile) return
+            if (started?.isActive == true) return
             started =
                 scope.launch {
+                    if (!models.ensure { _status.value = it }) return@launch
                     if (!loadModel()) return@launch
                     combine(
                         libraryRepository.observeSongTags().distinctUntilChanged(),
@@ -154,21 +161,7 @@ class VybeEngine
                 }
         }
 
-        /** Copies the model the user picked into app storage, then starts. */
-        suspend fun importModel(uri: Uri): Result<Unit> =
-            withContext(dispatcher) {
-                runCatching {
-                    val target = modelFile()
-                    target.parentFile?.mkdirs()
-                    val tmp = File(target.path + ".part")
-                    val input =
-                        context.contentResolver.openInputStream(uri)
-                            ?: throw IOException(localized().getString(CommonR.string.vybe_error_open_model_file))
-                    input.use { stream -> tmp.outputStream().use { stream.copyTo(it) } }
-                    if (!tmp.renameTo(target)) throw IOException(localized().getString(CommonR.string.vybe_error_store_model))
-                    _status.value = VybeStatus.LoadingModel
-                }.onFailure { logger.w(TAG, "Model import failed: ${it.message}") }
-            }.also { if (it.isSuccess) start() }
+        fun cancelDownload() = models.cancel()
 
         /** Answers [query] from the indexed songs. */
         suspend fun search(
@@ -190,17 +183,30 @@ class VybeEngine
             }
 
         /** Only a complete, ready catalog is allowed to classify moods. */
-        suspend fun matchMood(query: String, expected: List<com.erhu.erhu.core.model.SongTags>): Set<Long>? = withContext(dispatcher) {
-            if (_status.value !is VybeStatus.Ready || library.size != expected.size) return@withContext null
-            val current = library.associateBy { it.songId }
-            // During the indexing debounce, old vectors must not classify edited or new metadata.
-            if (expected.any { row ->
-                val indexed = current[row.songId]
-                indexed == null || indexed.title != row.title || indexed.artist != row.artist ||
-                    indexed.album != row.album || indexed.genre != row.genre || indexed.year != row.year || indexed.bpm != row.bpm
-            }) return@withContext null
-            discovery()?.moodMatches(query, library)
-        }
+        @Suppress("ComplexCondition")
+        suspend fun matchMood(
+            query: String,
+            expected: List<com.erhu.erhu.core.model.SongTags>,
+        ): Set<Long>? =
+            withContext(dispatcher) {
+                if (_status.value !is VybeStatus.Ready || library.size != expected.size) return@withContext null
+                val current = library.associateBy { it.songId }
+                // During the indexing debounce, old vectors must not classify edited or new metadata.
+                if (expected.any { row ->
+                        val indexed = current[row.songId]
+                        indexed == null ||
+                            indexed.title != row.title ||
+                            indexed.artist != row.artist ||
+                            indexed.album != row.album ||
+                            indexed.genre != row.genre ||
+                            indexed.year != row.year ||
+                            indexed.bpm != row.bpm
+                    }
+                ) {
+                    return@withContext null
+                }
+                discovery()?.moodMatches(query, library)
+            }
 
         /** Songs nearest to [songId] by description (e.g. the current track). */
         suspend fun similarTo(
@@ -249,7 +255,13 @@ class VybeEngine
         /** Reloads the model if it was released while VYBE was away. */
         @Suppress("ReturnCount")
         private suspend fun discovery(): VybeDiscovery? {
-            if (embedder == null && modelFile().isFile && !loadModel()) return null
+            if (embedder == null) {
+                if (!withContext(kotlinx.coroutines.Dispatchers.IO) { models.isInstalled() }) {
+                    start()
+                    return null
+                }
+                if (!loadModel()) return null
+            }
             if (started?.isActive != true) start()
             val model = embedder ?: return null
             val file = index ?: return null

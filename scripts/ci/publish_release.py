@@ -76,13 +76,13 @@ def main():
 
         # Ensure VYBE model pack is included in release assets
         vybe_tag = None
-        for r in releases:
+        for r in published:
             asset_names = [a["name"] for a in r.get("assets", [])]
             if "vybe-embeddinggemma-300m-int4int8.zip" in asset_names and "vybe-embeddinggemma-300m-int4int8.zip.sha256" in asset_names:
                 vybe_tag = r["tag_name"]
                 break
         if not vybe_tag:
-            vybe_tag = "erhu-v1.0.17-beta.31"
+            raise SystemExit("No published release contains the exact VYBE model pack and checksum")
 
         print(f"Fetching VYBE model pack from {vybe_tag}...")
         subprocess.run(
@@ -95,6 +95,9 @@ def main():
             raise SystemExit("Failed to download VYBE model pack assets")
         if hashlib.sha256(vybe_zip.read_bytes()).hexdigest() != vybe_sha.read_text(encoding="utf-8").split()[0]:
             raise SystemExit("Downloaded VYBE model pack failed sha256 checksum verification")
+        expected_model_sha = "c6d522f014c00910726afbb43b6756026ca35f4000741953d7800b2ff5e45f1f"
+        if vybe_zip.stat().st_size != 151298779 or hashlib.sha256(vybe_zip.read_bytes()).hexdigest() != expected_model_sha:
+            raise SystemExit("VYBE asset differs from the pinned EmbeddingGemma int4/int8 release bundle")
         assets.extend([vybe_zip, vybe_sha])
 
         subprocess.run(["gh", "release", "create", tag, "--draft", "--target", commit, "--title", f"erhu {metadata['versionName']}" + (" beta" if beta else ""), "--notes-file", str(notes)], check=True)

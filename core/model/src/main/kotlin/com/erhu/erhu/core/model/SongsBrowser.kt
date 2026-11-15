@@ -10,6 +10,7 @@ data class SongBrowserEntry(
 )
 
 enum class SongsSort { TITLE_ASC, TITLE_DESC, RECENTLY_ADDED, RECENTLY_PLAYED, ARTIST, ALBUM, MOST_PLAYED }
+
 enum class SongsMood { ALL, CHILL, HIGH_ENERGY, LATE_NIGHT, FEEL_GOOD, PARTY, LOVE, SAD, DARK, FOCUS, THROWBACK }
 
 data class SongsBrowserPreferences(

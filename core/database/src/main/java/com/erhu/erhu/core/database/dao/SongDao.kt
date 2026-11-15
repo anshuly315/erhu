@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 @Suppress("TooManyFunctions")
 interface SongDao {
-    @Query("""
+    @Query(
+        """
         SELECT s.*, COALESCE(h.plays, 0) AS browser_plays,
             COALESCE(h.last_played, 0) AS browser_last_played
         FROM songs s LEFT JOIN (
@@ -19,11 +20,15 @@ interface SongDao {
                 MAX(CASE WHEN play_count > 0 THEN last_played_at ELSE 0 END) AS last_played
             FROM listening_stats GROUP BY song_id
         ) h ON s.id = h.song_id
-    """)
+    """,
+    )
     fun observeBrowserSongs(): Flow<List<SongBrowserRow>>
 
     @Query("UPDATE songs SET date_added_ms = :added WHERE id = :id AND date_added_ms = 0")
-    suspend fun backfillAddedDate(id: Long, added: Long)
+    suspend fun backfillAddedDate(
+        id: Long,
+        added: Long,
+    )
 
     @Upsert
     suspend fun upsertAll(songs: List<SongEntity>)

@@ -7,8 +7,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.erhu.erhu.core.model.Album
 import com.erhu.erhu.core.model.Artist
-import com.erhu.erhu.core.model.Song
 import com.erhu.erhu.core.model.Playlist
+import com.erhu.erhu.core.model.Song
 import com.erhu.erhu.core.playback.toMediaItem
 import com.erhu.erhu.core.common.R as CommonR
 
@@ -53,8 +53,7 @@ object BrowseTree {
             .build()
     }
 
-    fun playlistFolder(playlist: Playlist): MediaItem =
-        browsableFolder("${MediaId.PLAYLIST_PREFIX}${playlist.id}", playlist.name)
+    fun playlistFolder(playlist: Playlist): MediaItem = browsableFolder("${MediaId.PLAYLIST_PREFIX}${playlist.id}", playlist.name)
 
     private fun categoryFolder(
         id: String,

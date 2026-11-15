@@ -118,8 +118,6 @@ import com.erhu.erhu.feature.library.ArtworkManagerScreen
 import com.erhu.erhu.feature.library.AudioDetailsViewModel
 import com.erhu.erhu.feature.library.FeaturedAlbumsViewModel
 import com.erhu.erhu.feature.library.LibraryBottomChrome
-import com.erhu.erhu.feature.library.SongsScreen
-import com.erhu.erhu.navigation.Songs
 import com.erhu.erhu.feature.library.LibraryScreen
 import com.erhu.erhu.feature.library.LibrarySection
 import com.erhu.erhu.feature.library.LibraryViewModel
@@ -133,6 +131,7 @@ import com.erhu.erhu.feature.library.PlaylistsViewModel
 import com.erhu.erhu.feature.library.RadioStationDetailScreen
 import com.erhu.erhu.feature.library.RepairPhase
 import com.erhu.erhu.feature.library.SmartPlaylistDetailScreen
+import com.erhu.erhu.feature.library.SongsScreen
 import com.erhu.erhu.feature.library.SoundCapsuleScreen
 import com.erhu.erhu.feature.library.ViewMetadataScreen
 import com.erhu.erhu.feature.library.VisualizerViewModel
@@ -164,6 +163,7 @@ import com.erhu.erhu.navigation.RadioStationDetail
 import com.erhu.erhu.navigation.Settings
 import com.erhu.erhu.navigation.SettingsCategory
 import com.erhu.erhu.navigation.SmartPlaylistDetail
+import com.erhu.erhu.navigation.Songs
 import com.erhu.erhu.navigation.SoundCapsule
 import com.erhu.erhu.navigation.WifiTransfer
 import com.erhu.erhu.navigation.navEnter
@@ -559,7 +559,14 @@ fun MainScaffold(
                                                             librarySection = it.visibleWithVybe(vybeEnabled)
                                                         },
                                                         defaultStartSection = defaultStartSection,
-                                                        onSearch = { if (isOnSongs) isSongsSearchActive = true else isLibrarySearchActive = true },
+                                                        onSearch = {
+                                                            if (isOnSongs) {
+                                                                isSongsSearchActive = true
+                                                            } else {
+                                                                isLibrarySearchActive =
+                                                                    true
+                                                            }
+                                                        },
                                                         onExpand = { scope.launch { libraryChrome.expand() } },
                                                         searching = if (isOnSongs) isSongsSearchActive else isLibrarySearchActive,
                                                         hasCurrentSong = hasCurrentSong,
@@ -955,7 +962,7 @@ internal fun Context.findActivity(): Activity? =
     }
 
 @Composable
-@Suppress("LongMethod", "CyclomaticComplexMethod")
+@Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 private fun LibraryRoute(
     libraryViewModel: LibraryViewModel,
     playlistsViewModel: PlaylistsViewModel,
