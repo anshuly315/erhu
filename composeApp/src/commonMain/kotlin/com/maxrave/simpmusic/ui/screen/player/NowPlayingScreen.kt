@@ -830,17 +830,9 @@ fun NowPlayingScreenContent(
     // declaring them first would bury them under the page after the device is turned.
     var tagEditTrackId by remember { mutableStateOf<String?>(null) }
     tagEditTrackId?.let { com.maxrave.simpmusic.ui.screen.radio.LocalTagEditorHost(it) { tagEditTrackId = null } }
-    var transitionTrackId by remember { mutableStateOf<String?>(null) }
-    transitionTrackId?.let { id ->
-        val at = artworkQueue.indexOfFirst { it.videoId == id }
-        com.maxrave.simpmusic.ui.screen.radio.TransitionStudioHost(id, artworkQueue.getOrNull(at + 1)?.videoId) {
-            transitionTrackId = null
-        }
-    }
     if (showSheet) {
         NowPlayingBottomSheet(
             onEditLocalTags = { tagEditTrackId = it },
-            onEditTransitions = { transitionTrackId = it },
             onDismiss = {
                 showSheet = false
             },

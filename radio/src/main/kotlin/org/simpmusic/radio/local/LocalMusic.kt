@@ -86,10 +86,6 @@ object LocalMusic {
                     }
                 }
             }
-            // Lets Transition Studio apply an album's crossfade setting to the fades inside it.
-            com.maxrave.domain.mediaservice.automix.TransitionOverrides.registerMembership(
-                out.associate { it.trackId to "album:" + it.albumId },
-            )
             out
         }
 }

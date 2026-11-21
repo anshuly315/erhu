@@ -73,13 +73,5 @@ actual fun RadioLocalSettingsGroup() {
             subtitle = "Clear the counts the smart mixes are built from",
             onClick = { PlayStats(context).clear(); toast("Play counts reset") },
         )
-        SettingItem(
-            title = "Reset transitions",
-            subtitle = "Remove every per-album and per-song crossfade setting",
-            onClick = {
-                com.maxrave.domain.mediaservice.automix.TransitionOverrides.clearAll()
-                toast("Transitions reset")
-            },
-        )
     }
 }

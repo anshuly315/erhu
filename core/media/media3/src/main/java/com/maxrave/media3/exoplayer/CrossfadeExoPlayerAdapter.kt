@@ -2178,10 +2178,8 @@ internal class CrossfadeExoPlayerAdapter(
     private fun isCurrentTrackTooShortForCrossfade(): Boolean {
         val duration = currentPlayer?.duration ?: return false
         if (duration <= 0L) return false
-        val outId = currentMediaItem?.mediaId ?: ""
-        val inId = playlist.getOrNull(getNextMediaItemIndex())?.mediaId ?: ""
         val fadeMs =
-            if (isAutoFor(outId, inId)) {
+            if (crossfadeDurationMs == DataStoreManager.CROSSFADE_DURATION_AUTO) {
                 // Auto resolves to 20–45s, nowhere near the 5s default — measuring against the
                 // default would let a 30s track through and then swallow it whole.
                 resolveAutoCrossfadeDurationMs(
@@ -2189,32 +2187,10 @@ internal class CrossfadeExoPlayerAdapter(
                     playlist.getOrNull(getNextMediaItemIndex())?.mediaId ?: "",
                 )
             } else {
-                fixedFadeFor(outId, inId)
+                crossfadeDurationMs
             }
         return duration < maxOf(MIN_CROSSFADE_TRACK_MS, fadeMs * 3L)
     }
-
-    /** Per-pair / per-album override from Transition Studio: ms, or null for the global setting. */
-    private fun transitionOverrideMs(
-        outgoingId: String,
-        incomingId: String,
-    ): Int? = com.maxrave.domain.mediaservice.automix.TransitionOverrides.resolve(outgoingId, incomingId)
-
-    private fun isTransitionOff(): Boolean {
-        val out = currentMediaItem?.mediaId ?: return false
-        val next = playlist.getOrNull(getNextMediaItemIndex())?.mediaId ?: return false
-        return transitionOverrideMs(out, next) == com.maxrave.domain.mediaservice.automix.TransitionOverrides.OFF
-    }
-
-    private fun isAutoFor(
-        outgoingId: String,
-        incomingId: String,
-    ): Boolean = transitionOverrideMs(outgoingId, incomingId) == null && crossfadeDurationMs == DataStoreManager.CROSSFADE_DURATION_AUTO
-
-    private fun fixedFadeFor(
-        outgoingId: String,
-        incomingId: String,
-    ): Int = transitionOverrideMs(outgoingId, incomingId)?.takeIf { it > 0 } ?: crossfadeDurationMs
 
     /**
      * True when both this track and the next came from the album loaded in the queue, and the user
@@ -2251,8 +2227,7 @@ internal class CrossfadeExoPlayerAdapter(
                 !isCurrentTrackLive() &&
                 !isNextTrackLive() &&
                 !isCurrentTrackTooShortForCrossfade() &&
-                !isWithinAlbum() &&
-                !isTransitionOff()
+                !isWithinAlbum()
 
         if (shouldCrossfade) {
             val nextIndex = getNextMediaItemIndex()
@@ -2308,8 +2283,7 @@ internal class CrossfadeExoPlayerAdapter(
 
                 // The placed transition, if the outgoing track is at its window. The end-of-file
                 // path and a fade begun after a seek past the window get the plain fade from 0.
-                val outgoingForOverride = playlist.getOrNull(localCurrentMediaItemIndex)?.mediaId ?: ""
-                val isAutoMode = isAutoFor(outgoingForOverride, nextVideoId)
+                val isAutoMode = crossfadeDurationMs == DataStoreManager.CROSSFADE_DURATION_AUTO
                 val plan =
                     if (isAutoMode) {
                         val outgoingVideoId = playlist.getOrNull(localCurrentMediaItemIndex)?.mediaId ?: ""
@@ -2382,7 +2356,7 @@ internal class CrossfadeExoPlayerAdapter(
                     } else if (isAutoMode) {
                         resolveAutoCrossfadeDurationMs(currentVideoId, nextVideoId)
                     } else {
-                        fixedFadeFor(currentVideoId, nextVideoId)
+                        crossfadeDurationMs
                     }
                 val bpmSpeedRatio = if (isAutoMode) calculateBpmSpeedRatio(currentVideoId, nextVideoId) else 1.0f
                 val keyPitchRatio = if (isAutoMode) calculateKeyPitchRatio(currentVideoId, nextVideoId) else 1.0f
@@ -3216,8 +3190,7 @@ internal class CrossfadeExoPlayerAdapter(
                                     !isCurrentTrackLive() &&
                                     !isNextTrackLive() &&
                                     !isCurrentTrackTooShortForCrossfade() &&
-                                    !isWithinAlbum() &&
-                !isTransitionOff()
+                                    !isWithinAlbum()
                                 ) {
                                     // Account for playback speed: at higher speed, media time
                                     // is consumed faster, so wall-clock remaining is shorter
@@ -3228,8 +3201,8 @@ internal class CrossfadeExoPlayerAdapter(
                                     // If next track is precached, trigger at exactly crossfadeDurationMs.
                                     // If NOT precached, trigger 3s earlier to allow preparation time.
                                     val preparationBufferMs = if (isPrecached) 0L else 3000L
+                                    val isAutoMode = crossfadeDurationMs == DataStoreManager.CROSSFADE_DURATION_AUTO
                                     val currentVideoId = playlist.getOrNull(localCurrentMediaItemIndex)?.mediaId ?: ""
-                                    val isAutoMode = isAutoFor(currentVideoId, nextVideoId ?: "")
                                     if (isAutoMode) measureTrackStructures(currentVideoId, nextVideoId ?: "")
                                     val plan = if (isAutoMode) transitionPlan(currentVideoId, nextVideoId ?: "") else null
                                     // In Auto mode, calculate beat-quantized duration for trigger threshold.
@@ -3237,7 +3210,7 @@ internal class CrossfadeExoPlayerAdapter(
                                         if (isAutoMode) {
                                             resolveAutoCrossfadeDurationMs(currentVideoId, nextVideoId ?: "")
                                         } else {
-                                            fixedFadeFor(currentVideoId, nextVideoId ?: "")
+                                            crossfadeDurationMs
                                         }
                                     val triggerThreshold = resolvedDurationMs.toLong() + preparationBufferMs
                                     // A placed fade starts when the outgoing track reaches its window,

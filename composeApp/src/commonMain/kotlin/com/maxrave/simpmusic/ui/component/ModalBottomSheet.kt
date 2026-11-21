@@ -1374,7 +1374,6 @@ fun NowPlayingBottomSheet(
     onAddLyrics: (() -> Unit)? = null,
     /** Set by Now Playing: opens the one-file tag and artwork editor; shown only for phone files. */
     onEditLocalTags: ((trackId: String) -> Unit)? = null,
-    onEditTransitions: ((trackId: String) -> Unit)? = null,
     /** Set when opened from a queue row: adds that row's move and delete actions at the top. */
     queuePosition: QueuePosition? = null,
     /**
@@ -1956,17 +1955,6 @@ fun NowPlayingBottomSheet(
                             val id = uiState.songUIState.videoId
                             hideModalBottomSheet()
                             onEditLocalTags(id)
-                        }
-                    }
-                    if (isLocalFile && onEditTransitions != null) {
-                        ActionButton(
-                            icon = SimpIcons.Tune,
-                            text = null,
-                            textString = "Transitions",
-                        ) {
-                            val id = uiState.songUIState.videoId
-                            hideModalBottomSheet()
-                            onEditTransitions(id)
                         }
                     }
                     if (!isLocal) {
