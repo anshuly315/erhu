@@ -94,6 +94,7 @@ class LocalPlayer(
         queueName: String = "My music",
     ) {
         val chosen = songs.getOrNull(index) ?: return
+        PlayStats(context).record(chosen.id)
         songs.forEach { RadioStreams.register(it.trackId, it.uri) }
         val tracks = songs.map { it.toTrack(FallbackArt.uriFor(context, it.id.toString())) }
         org.simpmusic.radio.data.RadioNow.station.value = null

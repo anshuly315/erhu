@@ -475,6 +475,9 @@ private fun LocalMusicPage(
     var query by remember { mutableStateOf("") }
     var sort by remember { mutableStateOf(LocalSort.Title) }
     var sortOpen by remember { mutableStateOf(false) }
+    var mixKey by remember { mutableStateOf<String?>(null) }
+    val seed = remember { System.currentTimeMillis() / 3_600_000L }
+    val stats = remember { org.simpmusic.radio.local.PlayStats(context) }
     LaunchedEffect(granted) { if (granted) songs = LocalMusic.scan(context) }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
         PageHeader("My music", back) {
@@ -508,11 +511,19 @@ private fun LocalMusicPage(
         }
         Box(Modifier.padding(horizontal = 20.dp)) { SearchBox(query, { query = it }, "Search your music") {} }
         Spacer(Modifier.height(8.dp))
+        val mixes = remember(all, seed, mixKey) { org.simpmusic.radio.local.SmartMixes.build(all, stats, seed) }
+        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { Chip("All songs", mixKey == null) { mixKey = null } }
+            items(mixes) { m -> Chip(m.title, mixKey == m.key) { mixKey = m.key } }
+        }
+        Spacer(Modifier.height(8.dp))
+        val activeMix = mixes.firstOrNull { it.key == mixKey }
         val shown =
-            remember(all, query, sort) {
+            remember(all, query, sort, activeMix) {
                 val q = query.trim().lowercase()
-                val filtered = if (q.isEmpty()) all else all.filter { it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q) }
-                when (sort) {
+                val base = activeMix?.songs ?: all
+                val filtered = if (q.isEmpty()) base else base.filter { it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q) }
+                if (activeMix != null) filtered else when (sort) {
                     LocalSort.Title -> filtered.sortedBy { it.title.lowercase() }
                     LocalSort.Artist -> filtered.sortedWith(compareBy({ it.artist.lowercase() }, { it.title.lowercase() }))
                     LocalSort.Album -> filtered.sortedWith(compareBy({ it.album.lowercase() }, { it.title.lowercase() }))
