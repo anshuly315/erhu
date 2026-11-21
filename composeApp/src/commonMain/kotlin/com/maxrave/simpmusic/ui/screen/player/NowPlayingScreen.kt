@@ -828,8 +828,11 @@ fun NowPlayingScreenContent(
     // sheet re-enters composition in one pass and attaches in declaration order: the landscape
     // lyrics page opens these same sheets (more, queue, add to playlist) on top of itself, and
     // declaring them first would bury them under the page after the device is turned.
+    var tagEditTrackId by remember { mutableStateOf<String?>(null) }
+    tagEditTrackId?.let { com.maxrave.simpmusic.ui.screen.radio.LocalTagEditorHost(it) { tagEditTrackId = null } }
     if (showSheet) {
         NowPlayingBottomSheet(
+            onEditLocalTags = { tagEditTrackId = it },
             onDismiss = {
                 showSheet = false
             },

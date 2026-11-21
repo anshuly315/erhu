@@ -49,6 +49,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,28 +100,38 @@ internal fun <T> PinchCollection(
     onClick: (Int) -> Unit,
 ) {
     val lv = level.intValue.coerceIn(0, LEVEL_MAX)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var live by remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    var settle by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     Box(
         Modifier.fillMaxSize().pointerInput(Unit) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                var zoom = 1f
                 do {
                     val ev = awaitPointerEvent(PointerEventPass.Initial)
                     if (ev.changes.size >= 2) {
-                        zoom *= ev.calculateZoom()
-                        if (zoom < 0.85f) { onLevel((level.intValue + 1).coerceAtMost(LEVEL_MAX)); zoom = 1f }
-                        else if (zoom > 1.18f) { onLevel((level.intValue - 1).coerceAtLeast(0)); zoom = 1f }
+                        settle?.cancel()
+                        live *= ev.calculateZoom()
+                        // Crossing a threshold swaps the layout and hands the scale over, so the
+                        // content keeps shrinking or growing without a jump.
+                        if (live < 0.78f && level.intValue < LEVEL_MAX) { onLevel(level.intValue + 1); live /= 0.62f }
+                        else if (live > 1.3f && level.intValue > 0) { onLevel(level.intValue - 1); live *= 0.62f }
+                        live = live.coerceIn(
+                            if (level.intValue >= LEVEL_MAX) 0.92f else 0.5f,
+                            if (level.intValue <= 0) 1.08f else 1.7f,
+                        )
                     }
                 } while (ev.changes.any { it.pressed })
+                val from = live
+                settle = scope.launch { androidx.compose.animation.core.animate(from, 1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 300f)) { v, _ -> live = v } }
             }
-        },
+        }.graphicsLayer { scaleX = live; scaleY = live },
     ) {
         AnimatedContent(
             targetState = lv,
             transitionSpec = {
                 val bigger = targetState > initialState
-                (fadeIn(tween(280)) + scaleIn(tween(280), initialScale = if (bigger) 0.9f else 1.1f)) togetherWith
-                    (fadeOut(tween(200)) + scaleOut(tween(200), targetScale = if (bigger) 1.1f else 0.9f))
+                fadeIn(tween(140)) togetherWith fadeOut(tween(140))
             },
             label = "pinchLevel",
         ) { l ->

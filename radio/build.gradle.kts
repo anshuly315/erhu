@@ -42,4 +42,6 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.coroutines.android)
     implementation(libs.activity.compose)
+    // Reads and writes tags in one chosen local file (Edit tags in the player menu).
+    implementation("net.jthink:jaudiotagger:3.0.1")
 }

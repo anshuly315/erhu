@@ -1372,6 +1372,8 @@ fun NowPlayingBottomSheet(
     onRemoveFromCache: (() -> Unit)? = null,
     /** Set while the song playing has no lyrics: adds Add lyrics under Main Lyrics Provider. */
     onAddLyrics: (() -> Unit)? = null,
+    /** Set by Now Playing: opens the one-file tag and artwork editor; shown only for phone files. */
+    onEditLocalTags: ((trackId: String) -> Unit)? = null,
     /** Set when opened from a queue row: adds that row's move and delete actions at the top. */
     queuePosition: QueuePosition? = null,
     /**
@@ -1702,6 +1704,10 @@ fun NowPlayingBottomSheet(
                         thickness = 1.dp,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
+                    // Radio stations, phone files and podcast episodes are not YouTube tracks.
+                    val isLocal = uiState.songUIState.videoId.startsWith("radio:")
+                    val isLocalFile = uiState.songUIState.videoId.startsWith("radio:local-") &&
+                        !uiState.songUIState.videoId.startsWith("radio:local-pod-")
                     if (queuePosition != null) {
                         QueueItemActions(position = queuePosition, onDone = hideModalBottomSheet)
                     }
@@ -1743,7 +1749,7 @@ fun NowPlayingBottomSheet(
                             viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.ToggleLike)
                         },
                     )
-                    if (youTubeDislike != null) {
+                    if (youTubeDislike != null && !isLocal) {
                         ActionButton(
                             icon = SimpIcons.ThumbDownOutline,
                             text =
@@ -1757,6 +1763,7 @@ fun NowPlayingBottomSheet(
                             onYouTubeDislike(uiState.songUIState.videoId)
                         }
                     }
+                    if (!isLocal) {
                     // A live broadcast has no file to keep. The row stays visible, disabled, so the
                     // reason can be read — the same way Add to queue says why it is blocked.
                     val downloadBlockedAsLive =
@@ -1798,6 +1805,7 @@ fun NowPlayingBottomSheet(
                     ) {
                         viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.Download)
                     }
+                    }
                     ActionButton(
                         icon = SimpIcons.PlaylistAdd,
                         text = Res.string.add_to_a_playlist,
@@ -1822,6 +1830,7 @@ fun NowPlayingBottomSheet(
                             viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.AddToQueue)
                         }
                     }
+                    if (!isLocal) {
                     ActionButton(
                         icon = SimpIcons.PeopleAlt,
                         text = Res.string.artists,
@@ -1868,7 +1877,8 @@ fun NowPlayingBottomSheet(
                         )
                         hideModalBottomSheet()
                     }
-                    Crossfade(targetState = changeMainLyricsProviderEnable) {
+                    }
+                    Crossfade(targetState = changeMainLyricsProviderEnable && !isLocal) {
                         if (it) {
                             ActionButton(
                                 icon = SimpIcons.Lyrics,
@@ -1936,11 +1946,24 @@ fun NowPlayingBottomSheet(
                             }
                         }
                     }
-                    ActionButton(
-                        icon = SimpIcons.Share,
-                        text = Res.string.share,
-                    ) {
-                        viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.Share)
+                    if (isLocalFile && onEditLocalTags != null) {
+                        ActionButton(
+                            icon = SimpIcons.Edit,
+                            text = null,
+                            textString = "Edit tags & artwork",
+                        ) {
+                            val id = uiState.songUIState.videoId
+                            hideModalBottomSheet()
+                            onEditLocalTags(id)
+                        }
+                    }
+                    if (!isLocal) {
+                        ActionButton(
+                            icon = SimpIcons.Share,
+                            text = Res.string.share,
+                        ) {
+                            viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.Share)
+                        }
                     }
                     EndOfModalBottomSheet()
                 }
