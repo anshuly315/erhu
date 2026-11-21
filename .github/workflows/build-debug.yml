@@ -38,7 +38,7 @@ jobs:
         run: set -o pipefail; ./gradlew exportLibraryDefinitions --stacktrace 2>&1 | tee build-log.txt
 
       - name: Build debug APK
-        run: set -o pipefail; ./gradlew :androidApp:assembleDebug --stacktrace 2>&1 | tee -a build-log.txt
+        run: set -o pipefail; ./gradlew :androidApp:assembleDebug -PonlyArm64 --stacktrace 2>&1 | tee -a build-log.txt
 
       - name: Upload APK
         if: always()

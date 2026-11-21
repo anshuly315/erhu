@@ -71,9 +71,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters.add("x86_64")
-            abiFilters.add("armeabi-v7a")
-            abiFilters.add("arm64-v8a")
+            if (project.hasProperty("onlyArm64")) {
+                abiFilters.add("arm64-v8a")
+            } else {
+                abiFilters.add("x86_64")
+                abiFilters.add("armeabi-v7a")
+                abiFilters.add("arm64-v8a")
+            }
         }
     }
 

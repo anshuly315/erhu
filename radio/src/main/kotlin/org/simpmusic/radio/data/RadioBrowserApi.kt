@@ -79,6 +79,10 @@ class RadioBrowserApi {
     ): List<RadioStation> =
         parseStations(get("$path?hidebroken=true$params"))
 
+    /** One station picked at random from the whole directory. */
+    suspend fun random(): RadioStation? =
+        stations("/json/stations/search", "&order=random&limit=1").firstOrNull()
+
     suspend fun popular(limit: Int = 60) = stations("/json/stations/topvote/$limit")
 
     suspend fun trending(limit: Int = 60) = stations("/json/stations/topclick/$limit")
