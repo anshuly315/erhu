@@ -25,6 +25,8 @@ data class LocalSong(
     val durationMs: Long,
     val addedAt: Long,
     val uri: String,
+    val genre: String? = null,
+    val year: Int = 0,
 ) {
     val albumArt: String get() = "content://media/external/audio/albumart/$albumId"
     val trackId: String get() = RadioStreams.PREFIX + "local-" + id
@@ -49,7 +51,8 @@ object LocalMusic {
                     MediaStore.Audio.Media.ALBUM_ID,
                     MediaStore.Audio.Media.DURATION,
                     MediaStore.Audio.Media.DATE_ADDED,
-                )
+                    MediaStore.Audio.Media.YEAR,
+                ) + (if (Build.VERSION.SDK_INT >= 30) arrayOf(MediaStore.Audio.Media.GENRE) else emptyArray())
             // Real songs only: no ringtones, notification sounds, or clips under 30 seconds.
             val where = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 30000"
             val out = ArrayList<LocalSong>()
@@ -62,6 +65,8 @@ object LocalMusic {
                     val iAlbumId = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
                     val iDur = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                     val iAdded = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+                    val iYear = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
+                    val iGenre = if (Build.VERSION.SDK_INT >= 30) c.getColumnIndex(MediaStore.Audio.Media.GENRE) else -1
                     while (c.moveToNext()) {
                         val id = c.getLong(iId)
                         val artist = c.getString(iArtist)?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: "Unknown artist"
@@ -75,6 +80,8 @@ object LocalMusic {
                                 durationMs = c.getLong(iDur),
                                 addedAt = c.getLong(iAdded),
                                 uri = ContentUris.withAppendedId(collection, id).toString(),
+                                genre = if (iGenre >= 0) c.getString(iGenre)?.takeIf { it.isNotBlank() } else null,
+                                year = c.getInt(iYear),
                             )
                     }
                 }

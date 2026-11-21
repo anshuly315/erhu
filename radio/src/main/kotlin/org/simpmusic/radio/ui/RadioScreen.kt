@@ -479,6 +479,13 @@ private fun LocalMusicPage(
     val seed = remember { System.currentTimeMillis() / 3_600_000L }
     val stats = remember { org.simpmusic.radio.local.PlayStats(context) }
     LaunchedEffect(granted) { if (granted) songs = LocalMusic.scan(context) }
+    var showVybe by remember { mutableStateOf(false) }
+    val loadedSongs = songs
+    if (showVybe && loadedSongs != null) {
+        androidx.activity.compose.BackHandler { showVybe = false }
+        VybePage(loadedSongs, player, bottomPadding) { showVybe = false }
+        return
+    }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
         PageHeader("My music", back) {
             Box {
@@ -539,6 +546,7 @@ private fun LocalMusicPage(
         Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Chip("▶ Play all", true) { scope.launch { player.play(shown, 0) } }
             Chip("Shuffle", false) { val m = shown.shuffled(); scope.launch { player.play(m, 0) } }
+            Chip("VYBE", false) { showVybe = true }
             Text("${shown.size} songs", color = Muted, fontSize = 13.sp)
         }
         val prefs = remember { context.getSharedPreferences("local_view", android.content.Context.MODE_PRIVATE) }

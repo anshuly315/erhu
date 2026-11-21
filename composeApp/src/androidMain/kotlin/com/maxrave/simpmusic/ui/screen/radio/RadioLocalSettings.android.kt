@@ -60,6 +60,14 @@ actual fun RadioLocalSettingsGroup() {
             subtitle = "Show mixes such as recently added, most played and forgotten favourites above your songs",
             switch = mixes to { mixes = it; store.showSmartMixes = it },
         )
+        val vybe = remember { org.simpmusic.radio.vybe.VybeEngine.get(context) }
+        val vybeStatus by vybe.status.collectAsState()
+        SettingItem(
+            title = "VYBE model",
+            subtitle = if (vybe.isInstalled()) "Installed (about 184 MB). Tap to delete it and free the space." else "Not downloaded. Open VYBE in the Local tab to set it up.",
+            isEnable = vybe.isInstalled() || vybeStatus is org.simpmusic.radio.vybe.VybeStatus.Downloading,
+            onClick = { vybe.deleteModel(); toast("VYBE model deleted") },
+        )
         SettingItem(
             title = "Reset play counts",
             subtitle = "Clear the counts the smart mixes are built from",

@@ -44,4 +44,6 @@ dependencies {
     implementation(libs.activity.compose)
     // Reads and writes tags in one chosen local file (Edit tags in the player menu).
     implementation("net.jthink:jaudiotagger:3.0.1")
+    // VYBE: on-device text embedding for describing what to listen to.
+    implementation("com.google.mediapipe:tasks-text:1.1.0")
 }
