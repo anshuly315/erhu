@@ -20,7 +20,10 @@ jobs:
         run: |
           SDKM=$(ls $ANDROID_HOME/cmdline-tools/*/bin/sdkmanager | head -1)
           yes | $SDKM --licenses > /dev/null || true
-          $SDKM "platforms;android-37" "build-tools;37.0.0" || $SDKM "platforms;android-37"
+          $SDKM --list 2>/dev/null | grep -E "platforms;android-3[5-9]" || true
+          PKG=$($SDKM --list 2>/dev/null | grep -oE "platforms;android-37[0-9.]*" | sort -u | head -1)
+          echo "Installing $PKG"
+          $SDKM "$PKG" "build-tools;37.0.0" || $SDKM "$PKG"
 
       - name: Local properties (no secrets needed for a debug build)
         run: |
