@@ -15,7 +15,7 @@ object RadioAuto {
         val store = RadioStore(app)
         val api = RadioBrowserApi()
 
-        fun RadioStation.item() = RadioItem(uuid, name, subtitle, favicon.takeIf { it.startsWith("http") } ?: FallbackArt.uriFor(app, uuid), streamUrl)
+        fun RadioStation.item() = RadioItem(uuid, name, subtitle, favicon.takeIf { it.startsWith("http") } ?: FallbackArt.uriFor(app, uuid, tags, language), streamUrl)
         RadioBrowse.provider =
             object : RadioBrowseProvider {
                 override suspend fun favourites() = store.favourites.value.map { it.item() }

@@ -31,7 +31,7 @@ fun StationArt(
     corner: Dp = 16.dp,
 ) {
     val context = LocalContext.current
-    val fallbackRes = remember(station.uuid) { org.simpmusic.radio.data.FallbackArt.resFor(context, station.uuid) }
+    val fallbackRes = remember(station.uuid) { org.simpmusic.radio.data.FallbackArt.resFor(context, station.uuid, station.tags, station.language) }
     Box(modifier.clip(RoundedCornerShape(corner)).background(Brush.linearGradient(listOf(Color(0xFF2B2F6E), Color(0xFF6A2C7E))))) {
         val fallback: @Composable () -> Unit = {
             if (fallbackRes != 0) {

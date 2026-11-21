@@ -35,7 +35,7 @@ class RadioPlayer(
         val chosen = stations.getOrNull(index) ?: return
         val pos = playable.indexOfFirst { it.uuid == chosen.uuid }.coerceAtLeast(0)
         playable.forEach { RadioStreams.register(RadioStreams.idFor(it.uuid), it.streamUrl) }
-        val tracks = playable.map { it.toTrack(FallbackArt.uriFor(context, it.uuid)) }
+        val tracks = playable.map { it.toTrack(FallbackArt.uriFor(context, it.uuid, it.tags, it.language)) }
         val first = tracks[pos]
         handler.setQueueData(
             QueueData.Data(
