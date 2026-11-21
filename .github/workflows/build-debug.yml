@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main, master, dev, music-app ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,6 +42,17 @@ jobs:
 
       - name: Build debug APK
         run: set -o pipefail; ./gradlew :androidApp:assembleDebug -PonlyArm64 --stacktrace 2>&1 | tee -a build-log.txt
+
+      - name: Publish APK as a release download
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(ls androidApp/build/outputs/apk/debug/*arm64*.apk androidApp/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)
+          cp "$APK" SimpMusic-erhu-debug-arm64.apk
+          gh release delete latest-debug --yes --cleanup-tag || true
+          gh release create latest-debug SimpMusic-erhu-debug-arm64.apk --prerelease \
+            --title "Latest debug build" --notes "Built from ${{ github.sha }}. Download the .apk directly and install."
 
       - name: Upload APK
         if: always()
