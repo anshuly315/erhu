@@ -27,11 +27,14 @@ jobs:
           echo "" >> gradle.properties
           echo "isFullBuild=true" >> gradle.properties
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Generate aboutLibraries.json
-        run: ./gradlew exportLibraryDefinitions --stacktrace
+        run: set -o pipefail; ./gradlew exportLibraryDefinitions --stacktrace 2>&1 | tee build-log.txt
 
       - name: Build debug APK
-        run: ./gradlew :androidApp:assembleDebug --stacktrace 2>&1 | tee build-log.txt
+        run: set -o pipefail; ./gradlew :androidApp:assembleDebug --stacktrace 2>&1 | tee -a build-log.txt
 
       - name: Upload APK
         if: always()
