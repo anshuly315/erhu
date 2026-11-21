@@ -19,6 +19,8 @@ import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestinatio
 import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.RadioDestination
 import com.maxrave.simpmusic.ui.screen.radio.RadioTabScreen
+import com.maxrave.simpmusic.ui.screen.radio.LocalTabScreen
+import com.maxrave.simpmusic.ui.navigation.destination.library.LocalDestination
 import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.screen.home.HomeScreen
@@ -78,6 +80,9 @@ fun AppNavigationGraph(
         }
         composable<RadioDestination> {
             RadioTabScreen(innerPadding = innerPadding)
+        }
+        composable<LocalDestination> {
+            LocalTabScreen(innerPadding = innerPadding)
         }
         // Only reachable as a tab while signed in to YouTube
         composable<MixForYouDestination> {

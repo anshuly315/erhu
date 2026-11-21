@@ -15,3 +15,10 @@ actual fun RadioTabScreen(innerPadding: PaddingValues) {
         Text("Internet radio is available in the Android app.")
     }
 }
+
+@Composable
+actual fun LocalTabScreen(innerPadding: PaddingValues) {
+    Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+        Text("Local music scanning is available in the Android app.")
+    }
+}

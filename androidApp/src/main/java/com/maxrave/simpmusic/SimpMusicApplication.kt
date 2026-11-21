@@ -78,6 +78,9 @@ class SimpMusicApplication :
             )
             loadKoinModules(viewModelModule)
         }
+        org.simpmusic.radio.data.RadioAlarm.handlerProvider = {
+            org.koin.core.context.GlobalContext.get().get<com.maxrave.domain.mediaservice.handler.MediaPlayerHandler>()
+        }
         // provide custom configuration
         val workConfig =
             Configuration

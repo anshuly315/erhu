@@ -15,6 +15,8 @@ import com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.RadioDestination
+import com.maxrave.simpmusic.ui.navigation.destination.library.LocalDestination
+import com.maxrave.simpmusic.ui.icon.MusicNote
 import com.maxrave.simpmusic.ui.icon.Radio
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.viewModel.SharedViewModel
@@ -25,6 +27,7 @@ import simpmusic.composeapp.generated.resources.home
 import simpmusic.composeapp.generated.resources.library
 import simpmusic.composeapp.generated.resources.mix
 import simpmusic.composeapp.generated.resources.radio
+import simpmusic.composeapp.generated.resources.local_music
 import simpmusic.composeapp.generated.resources.search
 import kotlin.reflect.KClass
 
@@ -120,6 +123,18 @@ sealed class BottomNavScreen(
         icon = {
             Icon(
                 imageVector = SimpIcons.Radio,
+                contentDescription = null,
+            )
+        },
+    )
+
+    data object Local : BottomNavScreen(
+        ordinal = 6,
+        destination = LocalDestination,
+        title = Res.string.local_music,
+        icon = {
+            Icon(
+                imageVector = SimpIcons.MusicNote,
                 contentDescription = null,
             )
         },

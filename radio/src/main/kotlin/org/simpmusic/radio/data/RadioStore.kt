@@ -39,6 +39,11 @@ class RadioStore(
         prefs.edit().putString(key, arr.toString()).apply()
     }
 
+    /** The station list layout: 0 cards, 1 list, 2 grid, 3 compact grid. */
+    var viewMode: Int
+        get() = prefs.getInt("view_mode", 1)
+        set(v) = prefs.edit().putInt("view_mode", v.coerceIn(0, 3)).apply()
+
     fun isFavourite(uuid: String) = _favourites.value.any { it.uuid == uuid }
 
     fun toggleFavourite(station: RadioStation) {

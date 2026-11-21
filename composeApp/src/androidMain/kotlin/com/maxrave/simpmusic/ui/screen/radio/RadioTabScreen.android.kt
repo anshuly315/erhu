@@ -30,3 +30,14 @@ actual fun RadioTabScreen(innerPadding: PaddingValues) {
         bottomPadding = innerPadding.calculateBottomPadding() + 120.dp,
     )
 }
+
+@Composable
+actual fun LocalTabScreen(innerPadding: PaddingValues) {
+    val context = LocalContext.current
+    val handler: MediaPlayerHandler = koinInject()
+    val localPlayer = remember(handler) { org.simpmusic.radio.local.LocalPlayer(context, handler) }
+    org.simpmusic.radio.ui.LocalMusicScreen(
+        player = localPlayer,
+        bottomPadding = innerPadding.calculateBottomPadding() + 120.dp,
+    )
+}

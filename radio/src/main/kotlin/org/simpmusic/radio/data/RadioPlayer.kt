@@ -15,7 +15,7 @@ import com.maxrave.domain.mediaservice.handler.QueueData
  */
 class RadioPlayer(
     private val context: android.content.Context,
-    private val handler: MediaPlayerHandler,
+    val handler: MediaPlayerHandler,
     private val api: RadioBrowserApi,
     private val store: RadioStore,
 ) {
@@ -47,10 +47,34 @@ class RadioPlayer(
                 continuation = null,
             ),
         )
+        RadioNow.station.value = chosen
         handler.loadMediaItem(first, Config.PLAYLIST_CLICK, pos)
         store.addToHistory(chosen)
         // Tells the directory it was played, and refreshes the stream URL in case it moved.
         api.registerClick(chosen.uuid)?.let { RadioStreams.register(RadioStreams.idFor(chosen.uuid), it) }
+    }
+
+    /** Plays podcast episodes through the same player; they are ordinary files, never live streams. */
+    suspend fun playEpisodes(
+        episodes: List<PodcastEpisode>,
+        index: Int,
+        queueName: String,
+    ) {
+        val chosen = episodes.getOrNull(index) ?: return
+        episodes.forEach { RadioStreams.register(it.trackId, it.url) }
+        val tracks = episodes.map { it.toTrack() }
+        RadioNow.station.value = null
+        handler.setQueueData(
+            QueueData.Data(
+                listTracks = tracks,
+                firstPlayedTrack = tracks[index],
+                playlistId = "podcast_" + queueName.lowercase().replace(' ', '_'),
+                playlistName = queueName,
+                playlistType = PlaylistType.PLAYLIST,
+                continuation = null,
+            ),
+        )
+        handler.loadMediaItem(tracks[index], Config.PLAYLIST_CLICK, index)
     }
 }
 
@@ -66,6 +90,24 @@ fun RadioStation.toTrack(fallbackArt: String? = null): Track =
         thumbnails = (favicon.takeIf { it.startsWith("http") } ?: fallbackArt)?.let { listOf(Thumbnail(height = 512, url = it, width = 512)) },
         title = name,
         videoId = RadioStreams.idFor(uuid),
+        videoType = null,
+        category = null,
+        feedbackTokens = null,
+        resultType = null,
+    )
+
+private fun PodcastEpisode.toTrack(): Track =
+    Track(
+        album = null,
+        artists = listOf(Artist(id = null, name = show)),
+        duration = null,
+        durationSeconds = durationSeconds,
+        isAvailable = true,
+        isExplicit = false,
+        likeStatus = null,
+        thumbnails = artwork.takeIf { it.startsWith("http") }?.let { listOf(Thumbnail(height = 512, url = it, width = 512)) },
+        title = title,
+        videoId = trackId,
         videoType = null,
         category = null,
         feedbackTokens = null,

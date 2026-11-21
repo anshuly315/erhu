@@ -53,6 +53,7 @@ import com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.RadioDestination
+import com.maxrave.simpmusic.ui.navigation.destination.library.LocalDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.screen.MiniPlayer
 import com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme
@@ -111,6 +112,7 @@ actual fun LiquidGlassAppBottomNavigationBar(
         listOfNotNull(
             BottomNavScreen.Home,
             BottomNavScreen.Radio,
+            BottomNavScreen.Local,
             BottomNavScreen.MixForYou.takeIf { showMixForYouTab },
             BottomNavScreen.Analytics.takeIf { showAnalyticsTab },
             BottomNavScreen.Library,
@@ -121,6 +123,7 @@ actual fun LiquidGlassAppBottomNavigationBar(
         listOfNotNull(
             BottomNavScreen.Home,
             BottomNavScreen.Radio,
+            BottomNavScreen.Local,
             BottomNavScreen.MixForYou.takeIf { showMixForYouTab },
             BottomNavScreen.Analytics.takeIf { showAnalyticsTab },
             BottomNavScreen.Library,
@@ -134,6 +137,7 @@ actual fun LiquidGlassAppBottomNavigationBar(
                 is AnalyticsDestination -> BottomNavScreen.Analytics.ordinal
                 is MixForYouDestination -> BottomNavScreen.MixForYou.ordinal
                 is RadioDestination -> BottomNavScreen.Radio.ordinal
+                is LocalDestination -> BottomNavScreen.Local.ordinal
                 else -> BottomNavScreen.Home.ordinal // Default to Home if not recognized
             },
         )

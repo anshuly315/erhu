@@ -55,12 +55,12 @@ import org.simpmusic.radio.local.LocalMusic
 import org.simpmusic.radio.local.LocalPlayer
 import org.simpmusic.radio.local.LocalSong
 
-private val Bg = Color(0xFF0E1110)
-private val Surface = Color(0xFF1D2220)
-private val Mint = Color(0xFFA9E5C0)
-private val OnMint = Color(0xFF0B2A1A)
-private val Muted = Color(0xFF9BA6A0)
-private val Ink = Color(0xFFF2F5F3)
+internal val Bg = Color(0xFF0E1110)
+internal val Surface = Color(0xFF1D2220)
+internal val Mint = Color(0xFFA9E5C0)
+internal val OnMint = Color(0xFF0B2A1A)
+internal val Muted = Color(0xFF9BA6A0)
+internal val Ink = Color(0xFFF2F5F3)
 
 private enum class StationSort(val label: String) {
     Default("Default order"),
@@ -128,9 +128,11 @@ private sealed interface Page {
     data class Facets(val title: String, val kind: String) : Page
     data object Favourites : Page
     data object Local : Page
+    data object Near : Page
+    data object Podcasts : Page
 }
 
-private sealed interface Load<out T> {
+internal sealed interface Load<out T> {
     data object Loading : Load<Nothing>
     data class Failed(val message: String) : Load<Nothing>
     data class Ready<T>(val value: T) : Load<T>
@@ -147,15 +149,18 @@ fun RadioScreen(
     bottomPadding: androidx.compose.ui.unit.Dp = 120.dp,
 ) {
     val stack = remember { mutableStateListOf<Page>(Page.Home) }
+    val modeState = rememberViewMode(store)
     val page = stack.last()
     BackHandler(enabled = stack.size > 1) { stack.removeAt(stack.lastIndex) }
     Box(modifier.fillMaxSize().background(Bg)) {
         when (page) {
             Page.Home -> HomePage(api, store, player, bottomPadding) { stack.add(it) }
-            is Page.Stations -> StationListPage(page.title, page.load, api, store, player, bottomPadding) { stack.removeAt(stack.lastIndex) }
+            is Page.Stations -> StationListPage(page.title, page.load, api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
             is Page.Facets -> FacetPage(page.title, page.kind, api, bottomPadding, { stack.removeAt(stack.lastIndex) }) { stack.add(it) }
-            Page.Favourites -> FavouritesPage(api, store, player, bottomPadding) { stack.removeAt(stack.lastIndex) }
+            Page.Favourites -> FavouritesPage(api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
             Page.Local -> LocalMusicPage(localPlayer, bottomPadding) { stack.removeAt(stack.lastIndex) }
+            Page.Near -> NearMePage(api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
+            Page.Podcasts -> PodcastsPage(player, bottomPadding) { stack.removeAt(stack.lastIndex) }
         }
     }
 }
@@ -173,6 +178,8 @@ private fun HomePage(
     var popular by remember { mutableStateOf<Load<List<RadioStation>>>(Load.Loading) }
     var trending by remember { mutableStateOf<Load<List<RadioStation>>>(Load.Loading) }
     val history by store.history.collectAsState()
+    var tools by remember { mutableStateOf(false) }
+    if (tools) ToolsDialog(player.handler, store) { tools = false }
     LaunchedEffect(Unit) {
         popular = runCatching { Load.Ready(api.popular()) }.getOrElse { Load.Failed(it.message ?: "Offline") }
         trending = runCatching { Load.Ready(api.trending()) }.getOrElse { Load.Failed(it.message ?: "Offline") }
@@ -185,16 +192,20 @@ private fun HomePage(
                         Text("Radio", color = Ink, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                         Text("Live stations from around the world", color = Muted, fontSize = 13.sp)
                     }
+                    Text("⏲", color = Ink, fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { tools = true }.padding(10.dp))
                     RandomButton { playRandom(scope, api, player) }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
+                NowPlayingCard()
+                Spacer(Modifier.height(12.dp))
                 SearchBox(query, { query = it }) {
                     if (query.isNotBlank()) open(Page.Stations("\"$query\"") { api.search(query.trim()) })
                 }
                 Spacer(Modifier.height(14.dp))
             }
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { Chip("My music", true) { open(Page.Local) } }
+                item { Chip("Near me", true) { open(Page.Near) } }
+                item { Chip("Podcasts", false) { open(Page.Podcasts) } }
                 item { Chip("Favourites", false) { open(Page.Favourites) } }
                 item { Chip("Countries", false) { open(Page.Facets("Countries", "country")) } }
                 item { Chip("Languages", false) { open(Page.Facets("Languages", "language")) } }
@@ -244,6 +255,7 @@ private fun StationListPage(
     api: RadioBrowserApi,
     store: RadioStore,
     player: RadioPlayer,
+    modeState: androidx.compose.runtime.MutableIntState,
     bottomPadding: androidx.compose.ui.unit.Dp,
     back: () -> Unit,
 ) {
@@ -253,6 +265,7 @@ private fun StationListPage(
     LaunchedEffect(title) { state = runCatching { Load.Ready(load()) }.getOrElse { Load.Failed(it.message ?: "Offline") } }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
         PageHeader(title, back) {
+            ViewModeButton(ViewMode.values()[modeState.intValue]) { modeState.intValue = it.ordinal; store.viewMode = it.ordinal }
             SortButton(sort) { sort = it }
             RandomButton { playRandom(scope, api, player) }
         }
@@ -264,7 +277,7 @@ private fun StationListPage(
                     Text("No stations found.", color = Muted, modifier = Modifier.padding(20.dp))
                 } else {
                     val sorted = remember(s.value, sort) { s.value.sortedBy(sort) }
-                    StationList(sorted, store, bottomPadding) { i -> scope.launch { player.play(sorted, i, title) } }
+                    StationCollection(sorted, store, modeState, bottomPadding) { i -> scope.launch { player.play(sorted, i, title) } }
                 }
         }
     }
@@ -275,6 +288,7 @@ private fun FavouritesPage(
     api: RadioBrowserApi,
     store: RadioStore,
     player: RadioPlayer,
+    modeState: androidx.compose.runtime.MutableIntState,
     bottomPadding: androidx.compose.ui.unit.Dp,
     back: () -> Unit,
 ) {
@@ -286,6 +300,7 @@ private fun FavouritesPage(
     val list = remember(showHistory, history, favs, sort) { (if (showHistory) history else favs).sortedBy(sort) }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
         PageHeader("My stations", back) {
+            ViewModeButton(ViewMode.values()[modeState.intValue]) { modeState.intValue = it.ordinal; store.viewMode = it.ordinal }
             SortButton(sort) { sort = it }
             RandomButton { playRandom(scope, api, player) }
         }
@@ -297,7 +312,7 @@ private fun FavouritesPage(
         if (list.isEmpty()) {
             Text(if (showHistory) "Nothing played yet." else "Tap the heart on a station to keep it here.", color = Muted, modifier = Modifier.padding(20.dp))
         } else {
-            StationList(list, store, bottomPadding) { i -> scope.launch { player.play(list, i, if (showHistory) "Recently played" else "Favourites") } }
+            StationCollection(list, store, modeState, bottomPadding) { i -> scope.launch { player.play(list, i, if (showHistory) "Recently played" else "Favourites") } }
         }
     }
 }
@@ -363,35 +378,6 @@ private fun FacetPage(
 }
 
 @Composable
-private fun StationList(
-    stations: List<RadioStation>,
-    store: RadioStore,
-    bottomPadding: androidx.compose.ui.unit.Dp,
-    onPlay: (Int) -> Unit,
-) {
-    val favs by store.favourites.collectAsState()
-    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
-        itemsIndexed(stations) { i, s ->
-            Row(Modifier.fillMaxWidth().clickable { onPlay(i) }.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                StationArt(s, Modifier.size(52.dp), 14.dp)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(s.name, color = Ink, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(listOf(s.subtitle, s.quality).filter { it.isNotBlank() }.joinToString(" · "), color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                val fav = favs.any { it.uuid == s.uuid }
-                Text(
-                    if (fav) "♥" else "♡",
-                    color = if (fav) Color(0xFFFF8FB1) else Muted,
-                    fontSize = 24.sp,
-                    modifier = Modifier.clip(CircleShape).clickable { store.toggleFavourite(s) }.padding(10.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun StationTile(
     s: RadioStation,
     onClick: () -> Unit,
@@ -410,20 +396,21 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun PageHeader(
+internal fun PageHeader(
     title: String,
-    back: () -> Unit,
+    back: (() -> Unit)?,
     trailing: @Composable () -> Unit = {},
 ) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("←", color = Ink, fontSize = 24.sp, modifier = Modifier.clip(CircleShape).clickable(onClick = back).padding(12.dp))
+        if (back != null) Text("←", color = Ink, fontSize = 24.sp, modifier = Modifier.clip(CircleShape).clickable(onClick = back).padding(12.dp))
+        else Spacer(Modifier.width(8.dp))
         Text(title.replaceFirstChar { it.uppercase() }, color = Ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         trailing()
     }
 }
 
 @Composable
-private fun Chip(
+internal fun Chip(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -438,7 +425,7 @@ private fun Chip(
 }
 
 @Composable
-private fun SearchBox(
+internal fun SearchBox(
     value: String,
     onChange: (String) -> Unit,
     hint: String = "Search stations, countries, genres",
@@ -476,7 +463,7 @@ private enum class LocalSort(val label: String) {
 private fun LocalMusicPage(
     player: LocalPlayer,
     bottomPadding: androidx.compose.ui.unit.Dp,
-    back: () -> Unit,
+    back: (() -> Unit)?,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -581,4 +568,14 @@ private fun LocalArt(
             error = { fallback() },
         )
     }
+}
+
+/** The Local tab: music files on the phone. */
+@Composable
+fun LocalMusicScreen(
+    player: LocalPlayer,
+    bottomPadding: androidx.compose.ui.unit.Dp = 120.dp,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxSize().background(Bg)) { LocalMusicPage(player, bottomPadding, null) }
 }

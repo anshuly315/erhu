@@ -265,6 +265,7 @@
     <string name="synced">Synced with YouTube Music</string>
     <string name="song">Song</string>
     <string name="radio">Radio</string>
+    <string name="local_music">Local</string>
     <string name="auto_created_by_youtube_music">Auto created by YouTube Music</string>
     <string name="start_radio">Start radio</string>
     <string name="saved_to_local_playlist">Saved to local playlist</string>
