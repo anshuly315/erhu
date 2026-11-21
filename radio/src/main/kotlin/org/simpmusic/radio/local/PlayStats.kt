@@ -10,6 +10,8 @@ class PlayStats(context: Context) {
 
     fun lastPlayed(id: Long) = prefs.getLong("t$id", 0L)
 
+    fun clear() = prefs.edit().clear().apply()
+
     fun record(id: Long) {
         prefs.edit().putInt("c$id", count(id) + 1).putLong("t$id", System.currentTimeMillis()).apply()
     }

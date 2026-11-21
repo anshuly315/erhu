@@ -13,6 +13,7 @@ import org.json.JSONArray
 class RadioStore(
     context: Context,
 ) {
+    private val appContext = context.applicationContext
     private val prefs = context.applicationContext.getSharedPreferences("radio_store", Context.MODE_PRIVATE)
 
     private val _favourites = MutableStateFlow(readList(KEY_FAV))
@@ -43,6 +44,27 @@ class RadioStore(
     var viewMode: Int
         get() = prefs.getInt("view_mode", 2)
         set(v) = prefs.edit().putInt("view_mode", v.coerceIn(0, 5)).apply()
+
+    /** Show the song a station says is playing (reads the stream's own title tag). */
+    var showNowPlaying: Boolean
+        get() = prefs.getBoolean("icy_now_playing", true)
+        set(v) = prefs.edit().putBoolean("icy_now_playing", v).apply()
+
+    /** Put the smart mixes row above the Local music list. */
+    var showSmartMixes: Boolean
+        get() = prefs.getBoolean("smart_mixes", true)
+        set(v) = prefs.edit().putBoolean("smart_mixes", v).apply()
+
+    fun unhideAll() {
+        _hidden.value = emptySet()
+        prefs.edit().putStringSet(KEY_HIDDEN, emptySet()).apply()
+    }
+
+    /** Back to the default pinch level in every radio and local list. */
+    fun resetLayouts() {
+        prefs.edit().putInt("view_mode", 2).apply()
+        appContext.getSharedPreferences("local_view", Context.MODE_PRIVATE).edit().clear().apply()
+    }
 
     fun isFavourite(uuid: String) = _favourites.value.any { it.uuid == uuid }
 

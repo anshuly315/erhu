@@ -1740,6 +1740,9 @@ fun SettingScreen(
                 )
             }
         }
+        item(key = "radio_local") {
+            com.maxrave.simpmusic.ui.screen.radio.RadioLocalSettingsGroup()
+        }
         item(key = "lyrics") {
             SettingGroup(title = stringResource(Res.string.lyrics)) {
                 SettingItem(

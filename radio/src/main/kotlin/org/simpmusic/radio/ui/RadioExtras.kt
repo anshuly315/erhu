@@ -72,12 +72,13 @@ import org.simpmusic.radio.data.RadioStore
 @Composable
 internal fun NowPlayingCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val store = remember { RadioStore(context) }
     val station by RadioNow.station.collectAsState()
     val s = station ?: return
     var title by remember(s.uuid) { mutableStateOf<String?>(null) }
     LaunchedEffect(s.uuid) {
         while (true) {
-            if (!s.streamUrl.contains(".m3u8", true)) title = IcyReader.nowPlaying(s.streamUrl) ?: title
+            if (store.showNowPlaying && !s.streamUrl.contains(".m3u8", true)) title = IcyReader.nowPlaying(s.streamUrl) ?: title
             delay(20_000)
         }
     }

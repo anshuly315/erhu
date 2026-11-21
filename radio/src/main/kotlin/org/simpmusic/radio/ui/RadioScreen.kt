@@ -511,7 +511,8 @@ private fun LocalMusicPage(
         }
         Box(Modifier.padding(horizontal = 20.dp)) { SearchBox(query, { query = it }, "Search your music") {} }
         Spacer(Modifier.height(8.dp))
-        val mixes = remember(all, seed, mixKey) { org.simpmusic.radio.local.SmartMixes.build(all, stats, seed) }
+        val showMixes = remember { RadioStore(context).showSmartMixes }
+        val mixes = remember(all, seed, mixKey, showMixes) { if (showMixes) org.simpmusic.radio.local.SmartMixes.build(all, stats, seed) else emptyList() }
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item { Chip("All songs", mixKey == null) { mixKey = null } }
             items(mixes) { m -> Chip(m.title, mixKey == m.key) { mixKey = m.key } }
