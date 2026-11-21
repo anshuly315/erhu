@@ -147,7 +147,7 @@ object LocalTagEditor {
                         runCatching { context.contentResolver.openOutputStream(uri, "wt")!!.use { o -> backup.inputStream().use { it.copyTo(o) } } }
                         throw e
                     }
-                    MediaStore.scanFile(context, arrayOf(null), null, null)
+                    context.contentResolver.notifyChange(uri, null)
                 } finally {
                     backup.delete()
                     edited.delete()

@@ -57,10 +57,11 @@ fun LocalTagEditorDialog(
         loaded = true
     }
 
+    val writeRef = remember { mutableStateOf<() -> Unit>({}) }
     // Android asks the user before another app's file may change; this is that prompt's answer.
     val consent =
         rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { res ->
-            if (res.resultCode == Activity.RESULT_OK) doWrite() else status = "Permission to edit the file was not given"
+            if (res.resultCode == Activity.RESULT_OK) writeRef.value() else status = "Permission to edit the file was not given"
         }
     fun doWrite() {
         scope.launch {
@@ -83,6 +84,7 @@ fun LocalTagEditorDialog(
         }
     }
 
+    writeRef.value = ::doWrite
     fun save() {
         scope.launch {
             val sender = if (android.os.Build.VERSION.SDK_INT >= 30) LocalTagEditor.writeRequest(context, uri) else null
