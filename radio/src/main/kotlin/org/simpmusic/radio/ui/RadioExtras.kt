@@ -204,7 +204,7 @@ internal fun NearMePage(
             }.getOrElse { Load.Failed(it.message ?: "Offline") }
     }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
-        PageHeader("Near me", back) { if (granted) ViewModeButton(ViewMode.values()[modeState.intValue]) { modeState.intValue = it.ordinal; store.viewMode = it.ordinal } }
+        PageHeader("Near me", back)
         if (!granted) {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Allow approximate location to find stations around you. It stays on your phone.", color = Muted, fontSize = 15.sp)

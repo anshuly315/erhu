@@ -58,14 +58,6 @@ import androidx.compose.ui.unit.sp
 import org.simpmusic.radio.data.RadioStation
 import org.simpmusic.radio.data.RadioStore
 
-/** Station list layouts, from the largest to the densest. Pinch in to go denser, pinch out to go larger. */
-internal enum class ViewMode(val label: String) {
-    Cards("Cards"),
-    List("List"),
-    Grid("Grid"),
-    Compact("Compact"),
-}
-
 internal fun shareStation(
     context: Context,
     s: RadioStation,
@@ -77,44 +69,117 @@ internal fun shareStation(
     context.startActivity(Intent.createChooser(send, "Share station").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
-/** The view-mode switch that sits in page headers. */
+
+internal const val LEVEL_MAX = 5
+
+/** Remembers the pinch level across pages and restarts. */
 @Composable
-internal fun ViewModeButton(
-    mode: ViewMode,
-    onChange: (ViewMode) -> Unit,
+internal fun rememberViewMode(store: RadioStore): androidx.compose.runtime.MutableIntState =
+    remember { mutableIntStateOf(store.viewMode.coerceIn(0, LEVEL_MAX)) }
+
+/**
+ * One collection, six levels of detail, driven by pinching: 0 two text columns, 1 text list,
+ * 2 list with small art, 3 list with large art, 4 grid of three, 5 grid of two with big art.
+ * Pinch in for denser, out for larger; every step can repeat within one gesture. The listener
+ * watches without consuming, so scrolling and taps still work.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun <T> PinchCollection(
+    items: List<T>,
+    level: androidx.compose.runtime.MutableIntState,
+    bottomPadding: Dp,
+    onLevel: (Int) -> Unit,
+    title: (T) -> String,
+    subtitle: (T) -> String,
+    art: @Composable (T, Modifier, Dp) -> Unit,
+    trailing: @Composable (T) -> Unit = {},
+    menu: @Composable (T, Boolean, () -> Unit) -> Unit = { _, _, _ -> },
+    onClick: (Int) -> Unit,
 ) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        Text(
-            when (mode) {
-                ViewMode.Cards -> "▭"
-                ViewMode.List -> "☰"
-                ViewMode.Grid -> "▦"
-                ViewMode.Compact -> "▩"
+    val lv = level.intValue.coerceIn(0, LEVEL_MAX)
+    Box(
+        Modifier.fillMaxSize().pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                var zoom = 1f
+                do {
+                    val ev = awaitPointerEvent(PointerEventPass.Initial)
+                    if (ev.changes.size >= 2) {
+                        zoom *= ev.calculateZoom()
+                        if (zoom < 0.85f) { onLevel((level.intValue + 1).coerceAtMost(LEVEL_MAX)); zoom = 1f }
+                        else if (zoom > 1.18f) { onLevel((level.intValue - 1).coerceAtLeast(0)); zoom = 1f }
+                    }
+                } while (ev.changes.any { it.pressed })
+            }
+        },
+    ) {
+        AnimatedContent(
+            targetState = lv,
+            transitionSpec = {
+                val bigger = targetState > initialState
+                (fadeIn(tween(280)) + scaleIn(tween(280), initialScale = if (bigger) 0.9f else 1.1f)) togetherWith
+                    (fadeOut(tween(200)) + scaleOut(tween(200), targetScale = if (bigger) 1.1f else 0.9f))
             },
-            color = Ink,
-            fontSize = 22.sp,
-            modifier = Modifier.clip(CircleShape).combinedClickable(onClick = { open = true }).padding(10.dp),
-        )
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            ViewMode.values().forEach { m ->
-                DropdownMenuItem(text = { Text(if (m == mode) "✓ ${m.label}" else m.label) }, onClick = { onChange(m); open = false })
+            label = "pinchLevel",
+        ) { l ->
+            @Composable
+            fun cell(i: Int, t: T, artSize: Dp?, corner: Dp, sub: Boolean, row: Boolean) {
+                var open by remember { mutableStateOf(false) }
+                val click = Modifier.combinedClickable(onClick = { onClick(i) }, onLongClick = { open = true })
+                Box {
+                    if (row) {
+                        Row(Modifier.fillMaxWidth().then(click).padding(horizontal = 16.dp, vertical = if (artSize == null) 6.dp else 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (artSize != null) { art(t, Modifier.size(artSize), corner); Spacer(Modifier.width(12.dp)) }
+                            Column(Modifier.weight(1f)) {
+                                Text(title(t), color = Ink, fontSize = if (artSize == null) 13.sp else 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (sub) Text(subtitle(t), color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            trailing(t)
+                        }
+                    } else {
+                        Column(Modifier.fillMaxWidth().then(click)) {
+                            art(t, Modifier.fillMaxWidth().aspectRatio(1f), corner)
+                            Spacer(Modifier.height(6.dp))
+                            Text(title(t), color = Ink, fontSize = if (l == 4) 12.sp else 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(subtitle(t), color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    menu(t, open) { open = false }
+                }
+            }
+            when (l) {
+                0 ->
+                    LazyVerticalGrid(GridCells.Fixed(2), contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
+                        itemsIndexed(items) { i, t -> cell(i, t, null, 0.dp, false, true) }
+                    }
+                1 ->
+                    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
+                        itemsIndexed(items) { i, t -> cell(i, t, null, 0.dp, true, true) }
+                    }
+                2 ->
+                    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
+                        itemsIndexed(items) { i, t -> cell(i, t, 44.dp, 10.dp, true, true) }
+                    }
+                3 ->
+                    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
+                        itemsIndexed(items) { i, t -> cell(i, t, 84.dp, 14.dp, true, true) }
+                    }
+                else ->
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(if (l == 4) 3 else 2),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding, start = 12.dp, end = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        itemsIndexed(items) { i, t -> cell(i, t, null, if (l == 4) 14.dp else 20.dp, true, false) }
+                    }
             }
         }
     }
 }
 
-/** Remembers the chosen layout across pages and restarts. */
-@Composable
-internal fun rememberViewMode(store: RadioStore): androidx.compose.runtime.MutableIntState =
-    remember { mutableIntStateOf(store.viewMode) }
-
-/**
- * Stations in one of four layouts. Two fingers pinching in or out switch layout, with a fade and
- * scale between them. The pinch listener watches events without consuming them, so scrolling and
- * taps keep working.
- */
-@OptIn(ExperimentalFoundationApi::class)
+/** Stations in the pinch layout, with the station long-press menu. */
 @Composable
 internal fun StationCollection(
     stations: List<RadioStation>,
@@ -123,121 +188,33 @@ internal fun StationCollection(
     bottomPadding: Dp,
     onPlay: (Int) -> Unit,
 ) {
+    val context = LocalContext.current
     val favs by store.favourites.collectAsState()
-    val mode = ViewMode.values()[modeState.intValue.coerceIn(0, 3)]
-    fun set(i: Int) {
-        val n = i.coerceIn(0, 3)
-        if (n != modeState.intValue) {
-            modeState.intValue = n
-            store.viewMode = n
-        }
-    }
-    Box(
-        Modifier.fillMaxSize().pointerInput(Unit) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                var zoom = 1f
-                var done = false
-                do {
-                    val ev = awaitPointerEvent(PointerEventPass.Initial)
-                    if (ev.changes.size >= 2 && !done) {
-                        zoom *= ev.calculateZoom()
-                        if (zoom < 0.8f) { set(modeState.intValue + 1); done = true }
-                        else if (zoom > 1.25f) { set(modeState.intValue - 1); done = true }
-                    }
-                } while (ev.changes.any { it.pressed })
+    PinchCollection(
+        items = stations,
+        level = modeState,
+        bottomPadding = bottomPadding,
+        onLevel = { modeState.intValue = it; store.viewMode = it },
+        title = { it.name },
+        subtitle = { listOf(it.subtitle, it.quality).filter { x -> x.isNotBlank() }.joinToString(" · ") },
+        art = { s, m, c -> StationArt(s, m, c) },
+        trailing = { s ->
+            val fav = favs.any { it.uuid == s.uuid }
+            Text(
+                if (fav) "♥" else "♡",
+                color = if (fav) Color(0xFFFF8FB1) else Muted,
+                fontSize = 22.sp,
+                modifier = Modifier.clip(CircleShape).combinedClickable(onClick = { store.toggleFavourite(s) }).padding(8.dp),
+            )
+        },
+        menu = { s, open, close ->
+            val fav = favs.any { it.uuid == s.uuid }
+            DropdownMenu(expanded = open, onDismissRequest = close) {
+                DropdownMenuItem(text = { Text(if (fav) "Remove from favourites" else "Add to favourites") }, onClick = { store.toggleFavourite(s); close() })
+                DropdownMenuItem(text = { Text("Share") }, onClick = { shareStation(context, s); close() })
+                DropdownMenuItem(text = { Text("Hide this station") }, onClick = { store.hide(s.uuid); close() })
             }
         },
-    ) {
-        AnimatedContent(
-            targetState = mode,
-            transitionSpec = {
-                (fadeIn(tween(260)) + scaleIn(tween(260), initialScale = 0.92f)) togetherWith
-                    (fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 1.06f))
-            },
-            label = "stationView",
-        ) { m ->
-            when (m) {
-                ViewMode.Cards ->
-                    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding, start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                        itemsIndexed(stations) { i, s -> StationItem(m, s, favs.any { it.uuid == s.uuid }, store) { onPlay(i) } }
-                    }
-                ViewMode.List ->
-                    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
-                        itemsIndexed(stations) { i, s -> StationItem(m, s, favs.any { it.uuid == s.uuid }, store) { onPlay(i) } }
-                    }
-                ViewMode.Grid, ViewMode.Compact ->
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(if (m == ViewMode.Grid) 2 else 3),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding, start = 16.dp, end = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        itemsIndexed(stations) { i, s -> StationItem(m, s, favs.any { it.uuid == s.uuid }, store) { onPlay(i) } }
-                    }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun StationItem(
-    mode: ViewMode,
-    s: RadioStation,
-    fav: Boolean,
-    store: RadioStore,
-    onClick: () -> Unit,
-) {
-    val context = LocalContext.current
-    var menu by remember { mutableStateOf(false) }
-    val click = Modifier.combinedClickable(onClick = onClick, onLongClick = { menu = true })
-    Box {
-        when (mode) {
-            ViewMode.List ->
-                Row(Modifier.fillMaxWidth().then(click).padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    StationArt(s, Modifier.size(52.dp), 14.dp)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(s.name, color = Ink, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(listOf(s.subtitle, s.quality).filter { it.isNotBlank() }.joinToString(" · "), color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Text(
-                        if (fav) "♥" else "♡",
-                        color = if (fav) Color(0xFFFF8FB1) else Muted,
-                        fontSize = 24.sp,
-                        modifier = Modifier.clip(CircleShape).combinedClickable(onClick = { store.toggleFavourite(s) }).padding(10.dp),
-                    )
-                }
-            ViewMode.Cards ->
-                Column(Modifier.fillMaxWidth().then(click)) {
-                    StationArt(s, Modifier.fillMaxWidth().aspectRatio(1.7f), 22.dp)
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(s.name, color = Ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(listOf(s.subtitle, s.quality).filter { it.isNotBlank() }.joinToString(" · "), color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        Text(
-                            if (fav) "♥" else "♡",
-                            color = if (fav) Color(0xFFFF8FB1) else Muted,
-                            fontSize = 26.sp,
-                            modifier = Modifier.clip(CircleShape).combinedClickable(onClick = { store.toggleFavourite(s) }).padding(8.dp),
-                        )
-                    }
-                }
-            ViewMode.Grid, ViewMode.Compact ->
-                Column(Modifier.fillMaxWidth().then(click)) {
-                    StationArt(s, Modifier.fillMaxWidth().aspectRatio(1f), if (mode == ViewMode.Grid) 20.dp else 14.dp)
-                    Spacer(Modifier.height(6.dp))
-                    Text(s.name, color = Ink, fontSize = if (mode == ViewMode.Grid) 14.sp else 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (mode == ViewMode.Grid) Text(s.subtitle, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-        }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text(if (fav) "Remove from favourites" else "Add to favourites") }, onClick = { store.toggleFavourite(s); menu = false })
-            DropdownMenuItem(text = { Text("Share") }, onClick = { shareStation(context, s); menu = false })
-            DropdownMenuItem(text = { Text("Hide this station") }, onClick = { store.hide(s.uuid); menu = false })
-        }
-    }
+        onClick = onPlay,
+    )
 }

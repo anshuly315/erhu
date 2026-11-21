@@ -265,7 +265,6 @@ private fun StationListPage(
     LaunchedEffect(title) { state = runCatching { Load.Ready(load()) }.getOrElse { Load.Failed(it.message ?: "Offline") } }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
         PageHeader(title, back) {
-            ViewModeButton(ViewMode.values()[modeState.intValue]) { modeState.intValue = it.ordinal; store.viewMode = it.ordinal }
             SortButton(sort) { sort = it }
             RandomButton { playRandom(scope, api, player) }
         }
@@ -300,7 +299,6 @@ private fun FavouritesPage(
     val list = remember(showHistory, history, favs, sort) { (if (showHistory) history else favs).sortedBy(sort) }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
         PageHeader("My stations", back) {
-            ViewModeButton(ViewMode.values()[modeState.intValue]) { modeState.intValue = it.ordinal; store.viewMode = it.ordinal }
             SortButton(sort) { sort = it }
             RandomButton { playRandom(scope, api, player) }
         }
@@ -531,20 +529,19 @@ private fun LocalMusicPage(
             Chip("Shuffle", false) { val m = shown.shuffled(); scope.launch { player.play(m, 0) } }
             Text("${shown.size} songs", color = Muted, fontSize = 13.sp)
         }
-        LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
-            itemsIndexed(shown) { i, s ->
-                Row(Modifier.fillMaxWidth().clickable { scope.launch { player.play(shown, i) } }.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    LocalArt(s, Modifier.size(52.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(s.title, color = Ink, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(s.artist + if (s.album.isNotBlank()) " · ${s.album}" else "", color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    val sec = s.durationMs / 1000
-                    Text("%d:%02d".format(sec / 60, sec % 60), color = Muted, fontSize = 12.sp)
-                }
-            }
-        }
+        val prefs = remember { context.getSharedPreferences("local_view", android.content.Context.MODE_PRIVATE) }
+        val level = remember { androidx.compose.runtime.mutableIntStateOf(prefs.getInt("level", 2).coerceIn(0, LEVEL_MAX)) }
+        PinchCollection(
+            items = shown,
+            level = level,
+            bottomPadding = bottomPadding,
+            onLevel = { level.intValue = it; prefs.edit().putInt("level", it).apply() },
+            title = { it.title },
+            subtitle = { it.artist + if (it.album.isNotBlank()) " · ${it.album}" else "" },
+            art = { song, m, c -> LocalArt(song, m, c) },
+            trailing = { song -> val sec = song.durationMs / 1000; Text("%d:%02d".format(sec / 60, sec % 60), color = Muted, fontSize = 12.sp) },
+            onClick = { i -> scope.launch { player.play(shown, i) } },
+        )
     }
 }
 
@@ -552,10 +549,11 @@ private fun LocalMusicPage(
 private fun LocalArt(
     song: LocalSong,
     modifier: Modifier,
+    corner: androidx.compose.ui.unit.Dp = 14.dp,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val res = remember(song.id) { org.simpmusic.radio.data.FallbackArt.resFor(context, song.id.toString()) }
-    Box(modifier.clip(RoundedCornerShape(14.dp)).background(Surface)) {
+    Box(modifier.clip(RoundedCornerShape(corner)).background(Surface)) {
         val fallback: @Composable () -> Unit = {
             if (res != 0) androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(res), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
         }
