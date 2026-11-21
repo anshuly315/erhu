@@ -27,9 +27,29 @@ data class LocalSong(
     val uri: String,
     val genre: String? = null,
     val year: Int = 0,
+    /** The folder the file sits in, e.g. "Music/Albums"; empty when unknown. */
+    val folder: String = "",
 ) {
     val albumArt: String get() = "content://media/external/audio/albumart/$albumId"
     val trackId: String get() = RadioStreams.PREFIX + "local-" + id
+}
+
+/** "Music/Albums/" or "/storage/emulated/0/Music/Albums/song.mp3" -> "Music/Albums". */
+internal fun folderOf(raw: String?): String {
+    if (raw.isNullOrBlank()) return ""
+    var p = raw.trim()
+    if (p.startsWith("/storage/emulated/0/")) p = p.removePrefix("/storage/emulated/0/")
+    if (p.contains('.') && p.substringAfterLast('/').contains('.')) p = p.substringBeforeLast('/', "")
+    return p.trim('/')
+}
+
+/** Folders the user switched off. Everything is on by default, so new folders show up by themselves. */
+object LocalFolders {
+    private fun prefs(context: Context) = context.applicationContext.getSharedPreferences("local_folders", Context.MODE_PRIVATE)
+
+    fun excluded(context: Context): Set<String> = prefs(context).getStringSet("excluded", emptySet()) ?: emptySet()
+
+    fun setExcluded(context: Context, folders: Set<String>) = prefs(context).edit().putStringSet("excluded", folders).apply()
 }
 
 /** Reads the music already on the phone from MediaStore. */
@@ -52,7 +72,8 @@ object LocalMusic {
                     MediaStore.Audio.Media.DURATION,
                     MediaStore.Audio.Media.DATE_ADDED,
                     MediaStore.Audio.Media.YEAR,
-                ) + (if (Build.VERSION.SDK_INT >= 30) arrayOf(MediaStore.Audio.Media.GENRE) else emptyArray())
+                ) + (if (Build.VERSION.SDK_INT >= 30) arrayOf(MediaStore.Audio.Media.GENRE) else emptyArray()) +
+                (if (Build.VERSION.SDK_INT >= 29) arrayOf(MediaStore.Audio.Media.RELATIVE_PATH) else arrayOf(MediaStore.Audio.Media.DATA))
             // Real songs only: no ringtones, notification sounds, or clips under 30 seconds.
             val where = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 30000"
             val out = ArrayList<LocalSong>()
@@ -67,6 +88,7 @@ object LocalMusic {
                     val iAdded = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                     val iYear = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
                     val iGenre = if (Build.VERSION.SDK_INT >= 30) c.getColumnIndex(MediaStore.Audio.Media.GENRE) else -1
+                    val iPath = c.getColumnIndex(if (Build.VERSION.SDK_INT >= 29) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA)
                     while (c.moveToNext()) {
                         val id = c.getLong(iId)
                         val artist = c.getString(iArtist)?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: "Unknown artist"
@@ -82,6 +104,7 @@ object LocalMusic {
                                 uri = ContentUris.withAppendedId(collection, id).toString(),
                                 genre = if (iGenre >= 0) c.getString(iGenre)?.takeIf { it.isNotBlank() } else null,
                                 year = c.getInt(iYear),
+                                folder = folderOf(if (iPath >= 0) c.getString(iPath) else null),
                             )
                     }
                 }

@@ -478,7 +478,11 @@ private fun LocalMusicPage(
     var mixKey by remember { mutableStateOf<String?>(null) }
     val seed = remember { System.currentTimeMillis() / 3_600_000L }
     val stats = remember { org.simpmusic.radio.local.PlayStats(context) }
-    LaunchedEffect(granted) { if (granted) songs = LocalMusic.scan(context) }
+    var scanned by remember { mutableStateOf<List<LocalSong>?>(null) }
+    var excluded by remember { mutableStateOf(org.simpmusic.radio.local.LocalFolders.excluded(context)) }
+    var foldersOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(granted) { if (granted) scanned = LocalMusic.scan(context) }
+    LaunchedEffect(scanned, excluded) { songs = scanned?.filter { it.folder !in excluded } }
     var showVybe by remember { mutableStateOf(false) }
     val loadedSongs = songs
     if (showVybe && loadedSongs != null) {
@@ -503,7 +507,19 @@ private fun LocalMusicPage(
         }
         if (all.isEmpty()) {
             PageHeader("My music", back)
-            Text("No music files found on this phone.", color = Muted, modifier = Modifier.padding(20.dp))
+            Text(
+                if (scanned.isNullOrEmpty()) "No music files found on this phone." else "Every folder is switched off.",
+                color = Muted, modifier = Modifier.padding(20.dp),
+            )
+            if (!scanned.isNullOrEmpty()) Box(Modifier.padding(horizontal = 20.dp)) { Chip("Choose folders", true) { foldersOpen = true } }
+            val every0 = scanned
+            if (foldersOpen && every0 != null) {
+                LocalFolderDialog(every0, excluded, { foldersOpen = false }) { chosen ->
+                    org.simpmusic.radio.local.LocalFolders.setExcluded(context, chosen)
+                    excluded = chosen
+                    foldersOpen = false
+                }
+            }
             return@Column
         }
         val showMixes = remember { RadioStore(context).showSmartMixes }
@@ -525,6 +541,12 @@ private fun LocalMusicPage(
                 }
             },
             sortMenu = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Folders", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { foldersOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+                Spacer(Modifier.width(8.dp))
                 Box {
                     Row(
                         Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { sortOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -539,8 +561,17 @@ private fun LocalMusicPage(
                         }
                     }
                 }
+                }
             },
         )
+        val every = scanned
+        if (foldersOpen && every != null) {
+            LocalFolderDialog(every, excluded, { foldersOpen = false }) { chosen ->
+                org.simpmusic.radio.local.LocalFolders.setExcluded(context, chosen)
+                excluded = chosen
+                foldersOpen = false
+            }
+        }
     }
 }
 

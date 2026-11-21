@@ -96,6 +96,9 @@ internal fun LocalHome(
     fun back() { stack.removeAt(stack.lastIndex) }
     fun songsOf(p: LocalPlaylist) = p.songIds.mapNotNull { byId[it] }
     var query by remember { mutableStateOf("") }
+    val viewPrefs = remember { context.getSharedPreferences("local_view", android.content.Context.MODE_PRIVATE) }
+    val level = remember { mutableIntStateOf(viewPrefs.getInt("level", 2).coerceIn(0, LEVEL_MAX)) }
+    fun setLevel(l: Int) { level.intValue = l; viewPrefs.edit().putInt("level", l).apply() }
 
     when (page) {
         LPage.Home -> {
@@ -167,27 +170,27 @@ internal fun LocalHome(
         }
         LPage.Songs -> {
             val sorted = sorter(all)
-            SongListPage("Songs", "${all.size} songs", sorted, library, favIds, playlists, bottomPadding, ::back, ::play, "My music")
+            SongListPage("Songs", "${all.size} songs", sorted, library, favIds, playlists, level, ::setLevel, bottomPadding, ::back, ::play, "My music")
         }
-        LPage.Favourites -> SongListPage("Favourites", "${favourites.size} songs", favourites, library, favIds, playlists, bottomPadding, ::back, ::play, "Favourites", emptyText = "Tap ♡ on a song to keep it here.")
-        LPage.Recent -> SongListPage("Recently played", "${recent.size} songs", recent, library, favIds, playlists, bottomPadding, ::back, ::play, "Recently played")
+        LPage.Favourites -> SongListPage("Favourites", "${favourites.size} songs", favourites, library, favIds, playlists, level, ::setLevel, bottomPadding, ::back, ::play, "Favourites", emptyText = "Tap ♡ on a song to keep it here.")
+        LPage.Recent -> SongListPage("Recently played", "${recent.size} songs", recent, library, favIds, playlists, level, ::setLevel, bottomPadding, ::back, ::play, "Recently played")
         is LPage.Mix -> {
             val m = mixes.firstOrNull { it.key == page.key }
-            SongListPage(m?.title ?: "Mix", "${m?.songs?.size ?: 0} songs", m?.songs.orEmpty(), library, favIds, playlists, bottomPadding, ::back, ::play, m?.title ?: "Mix")
+            SongListPage(m?.title ?: "Mix", "${m?.songs?.size ?: 0} songs", m?.songs.orEmpty(), library, favIds, playlists, level, ::setLevel, bottomPadding, ::back, ::play, m?.title ?: "Mix")
         }
         is LPage.Album -> {
             val a = albums.firstOrNull { it.albumId == page.id }
             val ordered = a?.songs.orEmpty().sortedWith(compareBy({ it.title.lowercase() }))
-            SongListPage(a?.title ?: "Album", (a?.artist ?: "") + " · ${ordered.size} songs", ordered, library, favIds, playlists, bottomPadding, ::back, ::play, a?.title ?: "Album", art = a?.songs?.firstOrNull())
+            SongListPage(a?.title ?: "Album", (a?.artist ?: "") + " · ${ordered.size} songs", ordered, library, favIds, playlists, level, ::setLevel, bottomPadding, ::back, ::play, a?.title ?: "Album", art = a?.songs?.firstOrNull())
         }
         is LPage.Artist -> {
             val a = artists.firstOrNull { it.name == page.name }
-            SongListPage(a?.name ?: "Artist", "${a?.songs?.size ?: 0} songs · ${a?.albums ?: 0} albums", a?.songs.orEmpty().sortedBy { it.title.lowercase() }, library, favIds, playlists, bottomPadding, ::back, ::play, a?.name ?: "Artist", art = a?.songs?.firstOrNull())
+            SongListPage(a?.name ?: "Artist", "${a?.songs?.size ?: 0} songs · ${a?.albums ?: 0} albums", a?.songs.orEmpty().sortedBy { it.title.lowercase() }, library, favIds, playlists, level, ::setLevel, bottomPadding, ::back, ::play, a?.name ?: "Artist", art = a?.songs?.firstOrNull())
         }
         is LPage.Playlist -> {
             val p = playlists.firstOrNull { it.id == page.id }
             if (p == null) { LaunchedEffect(Unit) { back() } } else {
-                PlaylistPage(p, songsOf(p), library, favIds, playlists, bottomPadding, ::back, ::play)
+                PlaylistPage(p, songsOf(p), library, favIds, playlists, level, ::setLevel, bottomPadding, ::back, ::play)
             }
         }
         LPage.Albums -> Column(Modifier.fillMaxSize()) {
@@ -339,7 +342,31 @@ private fun TrackActions(songs: List<LocalSong>, name: String, play: (List<Local
     }
 }
 
-/** One song: tap to play, heart, and a menu with playlist, tags and removal. */
+/** The song menu with its two dialogs (add to playlist, edit tags). Shared by rows and the pinch layouts. */
+@Composable
+private fun SongMenu(
+    song: LocalSong,
+    open: Boolean,
+    close: () -> Unit,
+    library: LocalLibrary,
+    favIds: Set<Long>,
+    playlists: List<LocalPlaylist>,
+    extra: @Composable (() -> Unit) -> Unit = {},
+) {
+    var adding by remember { mutableStateOf(false) }
+    var tags by remember { mutableStateOf(false) }
+    val fav = song.id in favIds
+    if (adding) AddToPlaylistDialog(listOf(song.id), library, playlists) { adding = false }
+    if (tags) LocalTagEditorDialog(song.trackId) { tags = false }
+    DropdownMenu(expanded = open, onDismissRequest = close) {
+        DropdownMenuItem(text = { Text(if (fav) "Remove from favourites" else "Add to favourites") }, onClick = { library.toggleFavourite(song.id); close() })
+        DropdownMenuItem(text = { Text("Add to playlist") }, onClick = { close(); adding = true })
+        DropdownMenuItem(text = { Text("Edit tags & artwork") }, onClick = { close(); tags = true })
+        extra(close)
+    }
+}
+
+/** One song row (Home's track list): tap to play, heart, and the song menu. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SongRow(
@@ -348,14 +375,9 @@ private fun SongRow(
     favIds: Set<Long>,
     playlists: List<LocalPlaylist>,
     onClick: () -> Unit,
-    extraMenu: @Composable (() -> Unit) -> Unit = {},
 ) {
     var menu by remember { mutableStateOf(false) }
-    var adding by remember { mutableStateOf(false) }
-    var tags by remember { mutableStateOf(false) }
     val fav = song.id in favIds
-    if (adding) AddToPlaylistDialog(listOf(song.id), library, playlists) { adding = false }
-    if (tags) LocalTagEditorDialog(song.trackId) { tags = false }
     Row(Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = { menu = true }).padding(start = 16.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         LocalArt(song, Modifier.size(46.dp), 10.dp)
         Spacer(Modifier.width(12.dp))
@@ -367,14 +389,40 @@ private fun SongRow(
         Text(if (fav) "♥" else "♡", color = if (fav) Color(0xFFFF8FB1) else Muted, fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { library.toggleFavourite(song.id) }.padding(8.dp))
         Box {
             Text("⋮", color = Muted, fontSize = 20.sp, modifier = Modifier.clip(CircleShape).clickable { menu = true }.padding(horizontal = 10.dp, vertical = 6.dp))
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text(if (fav) "Remove from favourites" else "Add to favourites") }, onClick = { library.toggleFavourite(song.id); menu = false })
-                DropdownMenuItem(text = { Text("Add to playlist") }, onClick = { menu = false; adding = true })
-                DropdownMenuItem(text = { Text("Edit tags & artwork") }, onClick = { menu = false; tags = true })
-                extraMenu { menu = false }
-            }
+            SongMenu(song, menu, { menu = false }, library, favIds, playlists)
         }
     }
+}
+
+/** Songs in the six-level pinch layout, with heart and the song menu. */
+@Composable
+private fun SongPinch(
+    songs: List<LocalSong>,
+    library: LocalLibrary,
+    favIds: Set<Long>,
+    playlists: List<LocalPlaylist>,
+    level: MutableIntState,
+    onLevel: (Int) -> Unit,
+    bottomPadding: Dp,
+    queueName: String,
+    play: (List<LocalSong>, Int, String) -> Unit,
+    extra: @Composable (LocalSong, () -> Unit) -> Unit = { _, _ -> },
+) {
+    PinchCollection(
+        items = songs,
+        level = level,
+        bottomPadding = bottomPadding,
+        onLevel = onLevel,
+        title = { it.title },
+        subtitle = { it.artist + if (it.album.isNotBlank()) " · ${it.album}" else "" },
+        art = { s, m, c -> LocalArt(s, m, c) },
+        trailing = { s ->
+            val fav = s.id in favIds
+            Text(if (fav) "♥" else "♡", color = if (fav) Color(0xFFFF8FB1) else Muted, fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { library.toggleFavourite(s.id) }.padding(8.dp))
+        },
+        menu = { s, open, close -> SongMenu(s, open, close, library, favIds, playlists) { c -> extra(s, c) } },
+        onClick = { i -> play(songs, i, queueName) },
+    )
 }
 
 @Composable
@@ -385,6 +433,8 @@ private fun SongListPage(
     library: LocalLibrary,
     favIds: Set<Long>,
     playlists: List<LocalPlaylist>,
+    level: MutableIntState,
+    onLevel: (Int) -> Unit,
     bottomPadding: Dp,
     back: () -> Unit,
     play: (List<LocalSong>, Int, String) -> Unit,
@@ -394,16 +444,15 @@ private fun SongListPage(
 ) {
     Column(Modifier.fillMaxSize()) {
         PageHeader(title, back)
-        LazyColumn(contentPadding = PaddingValues(bottom = bottomPadding)) {
-            item {
-                Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (art != null) { LocalArt(art, Modifier.size(96.dp), 16.dp); Spacer(Modifier.width(14.dp)) }
-                    Text(subtitle, color = Muted, fontSize = 13.sp)
-                }
-                if (songs.isNotEmpty()) TrackActions(songs, queueName, play)
-            }
-            if (songs.isEmpty()) item { Text(emptyText, color = Muted, modifier = Modifier.padding(20.dp)) }
-            itemsIndexed(songs) { i, s -> SongRow(s, library, favIds, playlists, onClick = { play(songs, i, queueName) }) }
+        Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (art != null) { LocalArt(art, Modifier.size(72.dp), 14.dp); Spacer(Modifier.width(14.dp)) }
+            Text(subtitle, color = Muted, fontSize = 13.sp)
+        }
+        if (songs.isEmpty()) {
+            Text(emptyText, color = Muted, modifier = Modifier.padding(20.dp))
+        } else {
+            TrackActions(songs, queueName, play)
+            Box(Modifier.weight(1f)) { SongPinch(songs, library, favIds, playlists, level, onLevel, bottomPadding, queueName, play) }
         }
     }
 }
@@ -416,6 +465,8 @@ private fun PlaylistPage(
     library: LocalLibrary,
     favIds: Set<Long>,
     playlists: List<LocalPlaylist>,
+    level: MutableIntState,
+    onLevel: (Int) -> Unit,
     bottomPadding: Dp,
     back: () -> Unit,
     play: (List<LocalSong>, Int, String) -> Unit,
@@ -443,21 +494,21 @@ private fun PlaylistPage(
                 }
             }
         }
-        LazyColumn(contentPadding = PaddingValues(bottom = bottomPadding)) {
-            item {
-                Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    PlaylistArt(p, songs, Modifier.size(96.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Text("${songs.size} songs", color = Muted, fontSize = 13.sp)
-                }
-                if (songs.isNotEmpty()) TrackActions(songs, p.name, play)
-            }
-            if (songs.isEmpty()) item { Text("Add songs from any song's ⋮ menu → Add to playlist.", color = Muted, modifier = Modifier.padding(20.dp)) }
-            itemsIndexed(songs, key = { _, s -> s.id }) { i, s ->
-                SongRow(s, library, favIds, playlists, onClick = { play(songs, i, p.name) }) { close ->
+        Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            PlaylistArt(p, songs, Modifier.size(72.dp))
+            Spacer(Modifier.width(14.dp))
+            Text("${songs.size} songs", color = Muted, fontSize = 13.sp)
+        }
+        if (songs.isEmpty()) {
+            Text("Add songs from any song's ⋮ menu → Add to playlist.", color = Muted, modifier = Modifier.padding(20.dp))
+        } else {
+            TrackActions(songs, p.name, play)
+            Box(Modifier.weight(1f)) {
+                SongPinch(songs, library, favIds, playlists, level, onLevel, bottomPadding, p.name, play) { s, close ->
+                    val i = songs.indexOfFirst { it.id == s.id }
                     DropdownMenuItem(text = { Text("Remove from playlist") }, onClick = { close(); library.removeSong(p.id, s.id) })
                     if (i > 0) DropdownMenuItem(text = { Text("Move up") }, onClick = { close(); library.move(p.id, i, i - 1) })
-                    if (i < songs.lastIndex) DropdownMenuItem(text = { Text("Move down") }, onClick = { close(); library.move(p.id, i, i + 1) })
+                    if (i in 0 until songs.lastIndex) DropdownMenuItem(text = { Text("Move down") }, onClick = { close(); library.move(p.id, i, i + 1) })
                 }
             }
         }

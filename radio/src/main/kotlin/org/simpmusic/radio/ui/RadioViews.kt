@@ -99,19 +99,28 @@ internal fun <T> PinchCollection(
     menu: @Composable (T, Boolean, () -> Unit) -> Unit = { _, _, _ -> },
     onClick: (Int) -> Unit,
 ) {
-    // Pinching is gone: one steady layout (list with small art).
-    val lv = 2
+    val lv = level.intValue.coerceIn(0, LEVEL_MAX)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    // Pinch changes the level one step at a time. No live scaling: the layout simply switches.
+    var zoom by remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
     Box(
-        Modifier.fillMaxSize(),
+        Modifier.fillMaxSize().pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                zoom = 1f
+                do {
+                    val ev = awaitPointerEvent(PointerEventPass.Initial)
+                    if (ev.changes.size >= 2) {
+                        zoom *= ev.calculateZoom()
+                        if (zoom < 0.8f && level.intValue < LEVEL_MAX) { onLevel(level.intValue + 1); zoom = 1f }
+                        else if (zoom > 1.25f && level.intValue > 0) { onLevel(level.intValue - 1); zoom = 1f }
+                    }
+                } while (ev.changes.any { it.pressed })
+            }
+        },
     ) {
-        AnimatedContent(
-            targetState = lv,
-            transitionSpec = {
-                val bigger = targetState > initialState
-                fadeIn(tween(140)) togetherWith fadeOut(tween(140))
-            },
-            label = "pinchLevel",
-        ) { l ->
+        run {
+            val l = lv
             @Composable
             fun cell(i: Int, t: T, artSize: Dp?, corner: Dp, sub: Boolean, row: Boolean) {
                 var open by remember { mutableStateOf(false) }
