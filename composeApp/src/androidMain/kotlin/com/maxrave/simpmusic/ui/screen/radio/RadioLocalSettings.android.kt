@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.maxrave.simpmusic.ui.component.SettingGroup
 import com.maxrave.simpmusic.ui.component.SettingItem
+import com.maxrave.simpmusic.ui.component.SettingsScope
 import org.simpmusic.radio.data.RadioStore
 import org.simpmusic.radio.local.PlayStats
 
@@ -26,6 +27,7 @@ actual fun RadioLocalSettingsGroup() {
 
     SettingGroup(
         title = "Radio",
+        scope = SettingsScope.Radio,
         footer = { androidx.compose.material3.Text("Pinch any station or song list to change how it looks.") },
     ) {
         SettingItem(
@@ -53,6 +55,7 @@ actual fun RadioLocalSettingsGroup() {
     }
     SettingGroup(
         title = "Local music",
+        scope = SettingsScope.Local,
         footer = { androidx.compose.material3.Text("To fix one song's tags or cover, open it in the player, tap the three dots and choose Edit tags & artwork.") },
     ) {
         SettingItem(

@@ -101,6 +101,7 @@ import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestinat
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentActions
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentAppleMusic
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentSoundCloud
+import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentErhu
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentM3Expressive
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentSpotify
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
@@ -1006,6 +1007,12 @@ fun NowPlayingScreenContent(
                 state = state,
                 actions = actions,
             )
+
+        DataStoreManager.NOW_PLAYING_STYLE_ERHU_CARDS ->
+            NowPlayingContentErhu(state = state, actions = actions, glass = false)
+
+        DataStoreManager.NOW_PLAYING_STYLE_ERHU_GLASS ->
+            NowPlayingContentErhu(state = state, actions = actions, glass = true)
 
         else ->
             NowPlayingContentSpotify(

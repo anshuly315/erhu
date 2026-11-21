@@ -343,7 +343,7 @@ internal fun BrowserLoginPanel(
             }
             state.profiles.groupBy { it.browser }.forEach { (browser, profiles) ->
                 item(key = "browser:$browser") {
-                    SettingGroup(title = browser) {
+                    SettingGroup(title = browser, collapsible = false) {
                         profiles.forEach { profile ->
                             val needsFileAccess = state.requiresFileAccess(profile, isMacOS)
                             val subtitle = when (profile.status) {

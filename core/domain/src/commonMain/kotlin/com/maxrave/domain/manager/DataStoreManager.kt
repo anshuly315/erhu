@@ -683,6 +683,8 @@ interface DataStoreManager {
         const val NOW_PLAYING_STYLE_M3_EXPRESSIVE = "M3_EXPRESSIVE"
         const val NOW_PLAYING_STYLE_APPLE_MUSIC = "APPLE_MUSIC"
         const val NOW_PLAYING_STYLE_SOUNDCLOUD = "SOUNDCLOUD"
+        const val NOW_PLAYING_STYLE_ERHU_CARDS = "ERHU_CARDS"
+        const val NOW_PLAYING_STYLE_ERHU_GLASS = "ERHU_GLASS"
 
         const val LYRICS_STYLE_CLASSIC = "CLASSIC"
         const val LYRICS_STYLE_APPLE_MUSIC = "APPLE_MUSIC"

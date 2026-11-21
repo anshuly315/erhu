@@ -135,6 +135,8 @@ import com.maxrave.simpmusic.ui.component.EndOfPage
 import com.maxrave.simpmusic.ui.component.LoadingDialog
 import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.component.SettingGroup
+import com.maxrave.simpmusic.ui.component.SettingsScope
+import com.maxrave.simpmusic.ui.component.SettingsSearchBar
 import com.maxrave.simpmusic.ui.component.SettingItem
 import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
 import com.maxrave.simpmusic.ui.icon.Close
@@ -375,6 +377,8 @@ import simpmusic.composeapp.generated.resources.not_available_while_casting
 import simpmusic.composeapp.generated.resources.now_playing_style
 import simpmusic.composeapp.generated.resources.now_playing_style_apple_music
 import simpmusic.composeapp.generated.resources.now_playing_style_soundcloud
+import simpmusic.composeapp.generated.resources.now_playing_style_erhu_cards
+import simpmusic.composeapp.generated.resources.now_playing_style_erhu_glass
 import simpmusic.composeapp.generated.resources.now_playing_style_m3_expressive
 import simpmusic.composeapp.generated.resources.now_playing_style_spotify
 import simpmusic.composeapp.generated.resources.ok
@@ -725,6 +729,7 @@ fun SettingScreen(
                             layout(constraints.maxWidth, placeable.height) { placeable.place(-bleed, 0) }
                         },
                 )
+                SettingsSearchBar()
                 // Above every section, and inside item 0 rather than an item of its own, for the
                 // glow reason above.
                 SettingGroup(
@@ -815,6 +820,8 @@ fun SettingScreen(
                             DataStoreManager.NOW_PLAYING_STYLE_APPLE_MUSIC to
                                 stringResource(Res.string.now_playing_style_apple_music) + requiresAndroid12,
                             DataStoreManager.NOW_PLAYING_STYLE_SOUNDCLOUD to stringResource(Res.string.now_playing_style_soundcloud),
+                            DataStoreManager.NOW_PLAYING_STYLE_ERHU_CARDS to stringResource(Res.string.now_playing_style_erhu_cards),
+                            DataStoreManager.NOW_PLAYING_STYLE_ERHU_GLASS to stringResource(Res.string.now_playing_style_erhu_glass) + requiresAndroid12,
                         )
                     SettingItem(
                         title = stringResource(Res.string.now_playing_style),
@@ -1004,7 +1011,7 @@ fun SettingScreen(
             }
         }
         item(key = "content") {
-            SettingGroup(title = stringResource(Res.string.content)) {
+            SettingGroup(title = stringResource(Res.string.content), scope = SettingsScope.YouTube) {
                 SettingItem(
                     title = stringResource(Res.string.youtube_account),
                     subtitle = stringResource(Res.string.manage_your_youtube_accounts),
@@ -2127,7 +2134,7 @@ fun SettingScreen(
             }
         }
         item(key = "spotify") {
-            SettingGroup(title = stringResource(Res.string.spotify)) {
+            SettingGroup(title = stringResource(Res.string.spotify), scope = SettingsScope.YouTube) {
                 SettingItem(
                     // The title follows the state: a row that still reads "Log in" while logged in
                     // gives no clue that tapping it signs you out.
@@ -2176,7 +2183,7 @@ fun SettingScreen(
             }
         }
         item(key = "discord") {
-            SettingGroup(title = stringResource(Res.string.discord_integration)) {
+            SettingGroup(title = stringResource(Res.string.discord_integration), scope = SettingsScope.YouTube) {
                 SettingItem(
                     title =
                         if (discordLoggedIn) {
@@ -2212,7 +2219,7 @@ fun SettingScreen(
         // build whose local.properties has no key.
         if (viewModel.lastfmAvailable) {
             item(key = "lastfm") {
-                SettingGroup(title = stringResource(Res.string.lastfm_integration)) {
+                SettingGroup(title = stringResource(Res.string.lastfm_integration), scope = SettingsScope.YouTube) {
                     SettingItem(
                         title =
                             if (lastfmLoggedIn) {
@@ -2248,6 +2255,7 @@ fun SettingScreen(
         item(key = "sponsor_block") {
             SettingGroup(
                 title = stringResource(Res.string.sponsorBlock),
+                scope = SettingsScope.YouTube,
                 // The project's note sits under the card, where a grouped list keeps its explanations.
                 footer = {
                     val beforeUrl = stringResource(Res.string.sponsor_block_intro).substringBefore("https://sponsor.ajay.app/")

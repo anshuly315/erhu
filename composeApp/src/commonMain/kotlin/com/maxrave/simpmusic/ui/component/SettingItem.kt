@@ -3,6 +3,7 @@ package com.maxrave.simpmusic.ui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +69,18 @@ fun SettingItem(
     // row at all, so it could not do the job it existed for. Clearing a child flag now belongs to the
     // logout that invalidates it (SettingsViewModel: setSpotifyLogIn, logOutDiscord, logOutLastfm,
     // setUsedAccount, logOutAllYouTube, setAIApiKey), which is a real event and cannot misfire.
+    // Settings search: while a query is typed, a row that does not match draws nothing, and a
+    // matching one tells its group so the group can show itself.
+    val query = SettingsSearch.query.trim()
+    val group = LocalGroupSearch.current
+    if (query.isNotEmpty()) {
+        val hit = group?.titleMatches == true || title.contains(query, true) || subtitle.contains(query, true)
+        DisposableEffect(hit, title) {
+            if (hit) group?.matched?.put(title, Unit)
+            onDispose { group?.matched?.remove(title) }
+        }
+        if (!hit) return
+    }
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     // The disabled colour the sheets use (SurfaceDarkColors.disabled). TextStyle.greyScale() alone
     // left a disabled title as bright as an enabled one, because the title passes its own colour,
@@ -146,37 +171,149 @@ fun SettingItem(
  * One group of the Settings screen, laid out the way Apple Music groups its settings: a small
  * header above, the rows on one rounded card, and an optional note under the card ([footer]).
  */
+/** Which part of the app a settings group belongs to. */
+enum class SettingsScope(val label: String) {
+    General("General"),
+    YouTube("Home & accounts"),
+    Radio("Radio"),
+    Local("Local"),
+}
+
+/** What the Settings screen is filtering by: the typed query and the chosen part of the app. */
+object SettingsSearch {
+    var query by mutableStateOf("")
+    var scope by mutableStateOf<SettingsScope?>(null)
+}
+
+internal class GroupSearch(val titleMatches: Boolean) {
+    val matched = mutableStateMapOf<String, Unit>()
+}
+
+internal val LocalGroupSearch = compositionLocalOf<GroupSearch?> { null }
+
+/** The search box and the Home / Radio / Local filter at the top of Settings. */
+@Composable
+fun SettingsSearchBar(modifier: Modifier = Modifier) {
+    DisposableEffect(Unit) {
+        onDispose {
+            SettingsSearch.query = ""
+            SettingsSearch.scope = null
+        }
+    }
+    Column(modifier.fillMaxWidth().padding(top = 8.dp)) {
+        OutlinedTextField(
+            value = SettingsSearch.query,
+            onValueChange = { SettingsSearch.query = it },
+            placeholder = { Text("Search settings") },
+            singleLine = true,
+            shape = RoundedCornerShape(50),
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                if (SettingsSearch.query.isNotEmpty()) {
+                    Text(
+                        "✕",
+                        modifier = Modifier.clickable { SettingsSearch.query = "" }.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            },
+        )
+        LazyRow(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
+            item {
+                FilterChip(
+                    selected = SettingsSearch.scope == null,
+                    onClick = { SettingsSearch.scope = null },
+                    label = { Text("All") },
+                )
+            }
+            SettingsScope.values().forEach { sc ->
+                item {
+                    FilterChip(
+                        selected = SettingsSearch.scope == sc,
+                        onClick = { SettingsSearch.scope = if (SettingsSearch.scope == sc) null else sc },
+                        label = { Text(sc.label) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One group of the Settings screen, laid out the way Apple Music groups its settings: a small
+ * header above, the rows on one rounded card, and an optional note under the card ([footer]).
+ * The header folds the group away (tap it); a search opens every group that has a match.
+ */
 @Composable
 fun SettingGroup(
     title: String,
     modifier: Modifier = Modifier,
+    scope: SettingsScope = SettingsScope.General,
+    collapsible: Boolean = true,
     footer: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val cardColor = settingGroupColor()
-    Column(modifier.fillMaxWidth().padding(top = 24.dp)) {
-        Text(
-            text = title.toUpperCase(Locale.current),
-            // The headers' size from before the groups; only the weight drops, so they step back.
-            style = typo().labelMedium.copy(fontWeight = FontWeight.Normal),
-            modifier = Modifier.padding(start = SettingRowPaddingHorizontal, end = SettingRowPaddingHorizontal, bottom = 8.dp),
-        )
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(SettingGroupShape)
-                    .background(cardColor.copy(alpha = 0.5f))
-                    .drawWithContent {
-                        // The first row's hairline would sit on the card's own edge, so that strip is
-                        // left undrawn. Clipped rather than painted over: the card is translucent.
-                        clipRect(top = SettingDividerThickness.toPx()) { this@drawWithContent.drawContent() }
-                    },
-            content = content,
-        )
-        if (footer != null) {
-            Box(Modifier.padding(start = SettingRowPaddingHorizontal, end = SettingRowPaddingHorizontal, top = 8.dp)) {
-                footer()
+    val query = SettingsSearch.query.trim()
+    val searching = query.isNotEmpty()
+    val chosen = SettingsSearch.scope
+    val groupSearch = remember(query, title) { GroupSearch(title.contains(query, true)) }
+    var expanded by rememberSaveable(title) { mutableStateOf(!collapsible) }
+    val open = expanded || searching
+    val inScope = chosen == null || chosen == scope
+    if (!inScope) return
+    val hide = searching && !groupSearch.titleMatches && groupSearch.matched.isEmpty()
+    Column(
+        modifier
+            .fillMaxWidth()
+            .then(
+                if (hide) {
+                    Modifier.layout { measurable, constraints ->
+                        measurable.measure(constraints)
+                        layout(0, 0) {}
+                    }
+                } else {
+                    Modifier.padding(top = 24.dp)
+                },
+            ),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !searching && collapsible) { expanded = !expanded }
+                .padding(start = SettingRowPaddingHorizontal, end = SettingRowPaddingHorizontal, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title.toUpperCase(Locale.current),
+                // The headers' size from before the groups; only the weight drops, so they step back.
+                style = typo().labelMedium.copy(fontWeight = FontWeight.Normal),
+                modifier = Modifier.weight(1f),
+            )
+            if (!searching && collapsible) Text(if (open) "▾" else "▸", style = typo().labelMedium)
+        }
+        if (open) {
+            CompositionLocalProvider(LocalGroupSearch provides groupSearch) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(SettingGroupShape)
+                            .background(cardColor.copy(alpha = 0.5f))
+                            .drawWithContent {
+                                // The first row's hairline would sit on the card's own edge, so that strip is
+                                // left undrawn. Clipped rather than painted over: the card is translucent.
+                                clipRect(top = SettingDividerThickness.toPx()) { this@drawWithContent.drawContent() }
+                            },
+                    content = content,
+                )
+            }
+            if (footer != null && !searching) {
+                Box(Modifier.padding(start = SettingRowPaddingHorizontal, end = SettingRowPaddingHorizontal, top = 8.dp)) {
+                    footer()
+                }
             }
         }
     }
