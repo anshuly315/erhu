@@ -487,23 +487,8 @@ private fun LocalMusicPage(
         return
     }
     Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
-        PageHeader("My music", back) {
-            Box {
-                Row(
-                    Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { sortOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Sort", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Text(" ▾", color = Muted, fontSize = 14.sp)
-                }
-                DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
-                    LocalSort.values().forEach { o ->
-                        DropdownMenuItem(text = { Text(if (o == sort) "✓ ${o.label}" else o.label) }, onClick = { sort = o; sortOpen = false })
-                    }
-                }
-            }
-        }
         if (!granted) {
+            PageHeader("My music", back)
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Allow access to the music on your phone to play it here.", color = Muted, fontSize = 15.sp)
                 Spacer(Modifier.height(16.dp))
@@ -516,57 +501,51 @@ private fun LocalMusicPage(
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = Mint) }
             return@Column
         }
-        Box(Modifier.padding(horizontal = 20.dp)) { SearchBox(query, { query = it }, "Search your music") {} }
-        Spacer(Modifier.height(8.dp))
-        val showMixes = remember { RadioStore(context).showSmartMixes }
-        val mixes = remember(all, seed, mixKey, showMixes) { if (showMixes) org.simpmusic.radio.local.SmartMixes.build(all, stats, seed) else emptyList() }
-        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { Chip("All songs", mixKey == null) { mixKey = null } }
-            items(mixes) { m -> Chip(m.title, mixKey == m.key) { mixKey = m.key } }
-        }
-        Spacer(Modifier.height(8.dp))
-        val activeMix = mixes.firstOrNull { it.key == mixKey }
-        val shown =
-            remember(all, query, sort, activeMix) {
-                val q = query.trim().lowercase()
-                val base = activeMix?.songs ?: all
-                val filtered = if (q.isEmpty()) base else base.filter { it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q) }
-                if (activeMix != null) filtered else when (sort) {
-                    LocalSort.Title -> filtered.sortedBy { it.title.lowercase() }
-                    LocalSort.Artist -> filtered.sortedWith(compareBy({ it.artist.lowercase() }, { it.title.lowercase() }))
-                    LocalSort.Album -> filtered.sortedWith(compareBy({ it.album.lowercase() }, { it.title.lowercase() }))
-                    LocalSort.Newest -> filtered.sortedByDescending { it.addedAt }
-                    LocalSort.Longest -> filtered.sortedByDescending { it.durationMs }
-                }
-            }
-        if (shown.isEmpty()) {
-            Text(if (all.isEmpty()) "No music files found on this phone." else "No matches.", color = Muted, modifier = Modifier.padding(20.dp))
+        if (all.isEmpty()) {
+            PageHeader("My music", back)
+            Text("No music files found on this phone.", color = Muted, modifier = Modifier.padding(20.dp))
             return@Column
         }
-        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Chip("▶ Play all", true) { scope.launch { player.play(shown, 0) } }
-            Chip("Shuffle", false) { val m = shown.shuffled(); scope.launch { player.play(m, 0) } }
-            Chip("VYBE", false) { showVybe = true }
-            Text("${shown.size} songs", color = Muted, fontSize = 13.sp)
-        }
-        val prefs = remember { context.getSharedPreferences("local_view", android.content.Context.MODE_PRIVATE) }
-        val level = remember { androidx.compose.runtime.mutableIntStateOf(prefs.getInt("level", 2).coerceIn(0, LEVEL_MAX)) }
-        PinchCollection(
-            items = shown,
-            level = level,
+        val showMixes = remember { RadioStore(context).showSmartMixes }
+        val mixes = remember(all, seed, showMixes) { if (showMixes) org.simpmusic.radio.local.SmartMixes.build(all, stats, seed) else emptyList() }
+        LocalHome(
+            all = all,
+            mixes = mixes,
+            player = player,
             bottomPadding = bottomPadding,
-            onLevel = { level.intValue = it; prefs.edit().putInt("level", it).apply() },
-            title = { it.title },
-            subtitle = { it.artist + if (it.album.isNotBlank()) " · ${it.album}" else "" },
-            art = { song, m, c -> LocalArt(song, m, c) },
-            trailing = { song -> val sec = song.durationMs / 1000; Text("%d:%02d".format(sec / 60, sec % 60), color = Muted, fontSize = 12.sp) },
-            onClick = { i -> scope.launch { player.play(shown, i) } },
+            onVybe = { showVybe = true },
+            sortLabel = sort.label,
+            sorter = { list ->
+                when (sort) {
+                    LocalSort.Title -> list.sortedBy { it.title.lowercase() }
+                    LocalSort.Artist -> list.sortedWith(compareBy({ it.artist.lowercase() }, { it.title.lowercase() }))
+                    LocalSort.Album -> list.sortedWith(compareBy({ it.album.lowercase() }, { it.title.lowercase() }))
+                    LocalSort.Newest -> list.sortedByDescending { it.addedAt }
+                    LocalSort.Longest -> list.sortedByDescending { it.durationMs }
+                }
+            },
+            sortMenu = {
+                Box {
+                    Row(
+                        Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { sortOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Sort", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text(" ▾", color = Muted, fontSize = 14.sp)
+                    }
+                    DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                        LocalSort.values().forEach { o ->
+                            DropdownMenuItem(text = { Text(if (o == sort) "✓ ${o.label}" else o.label) }, onClick = { sort = o; sortOpen = false })
+                        }
+                    }
+                }
+            },
         )
     }
 }
 
 @Composable
-private fun LocalArt(
+internal fun LocalArt(
     song: LocalSong,
     modifier: Modifier,
     corner: androidx.compose.ui.unit.Dp = 14.dp,

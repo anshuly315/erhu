@@ -99,33 +99,10 @@ internal fun <T> PinchCollection(
     menu: @Composable (T, Boolean, () -> Unit) -> Unit = { _, _, _ -> },
     onClick: (Int) -> Unit,
 ) {
-    val lv = level.intValue.coerceIn(0, LEVEL_MAX)
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var live by remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
-    var settle by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    // Pinching is gone: one steady layout (list with small art).
+    val lv = 2
     Box(
-        Modifier.fillMaxSize().pointerInput(Unit) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                do {
-                    val ev = awaitPointerEvent(PointerEventPass.Initial)
-                    if (ev.changes.size >= 2) {
-                        settle?.cancel()
-                        live *= ev.calculateZoom()
-                        // Crossing a threshold swaps the layout and hands the scale over, so the
-                        // content keeps shrinking or growing without a jump.
-                        if (live < 0.78f && level.intValue < LEVEL_MAX) { onLevel(level.intValue + 1); live /= 0.62f }
-                        else if (live > 1.3f && level.intValue > 0) { onLevel(level.intValue - 1); live *= 0.62f }
-                        live = live.coerceIn(
-                            if (level.intValue >= LEVEL_MAX) 0.92f else 0.5f,
-                            if (level.intValue <= 0) 1.08f else 1.7f,
-                        )
-                    }
-                } while (ev.changes.any { it.pressed })
-                val from = live
-                settle = scope.launch { androidx.compose.animation.core.animate(from, 1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 300f)) { v, _ -> live = v } }
-            }
-        }.graphicsLayer { scaleX = live; scaleY = live },
+        Modifier.fillMaxSize(),
     ) {
         AnimatedContent(
             targetState = lv,
