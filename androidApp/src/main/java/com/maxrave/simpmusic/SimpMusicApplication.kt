@@ -59,6 +59,7 @@ class SimpMusicApplication :
     override fun onCreate() {
         super.onCreate()
         org.simpmusic.radio.data.RadioAuto.install(this)
+        org.simpmusic.radio.local.TransitionStore.install(this)
         // First, so the rest of startup reaches the App log too (Settings → Developer option).
         Logger.enableFileLogging(File(filesDir, "logs").path)
         configCrashlytics(this, BuildKonfig.sentryDsn)
