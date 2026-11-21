@@ -51,6 +51,9 @@ import org.simpmusic.radio.data.RadioFacet
 import org.simpmusic.radio.data.RadioPlayer
 import org.simpmusic.radio.data.RadioStation
 import org.simpmusic.radio.data.RadioStore
+import org.simpmusic.radio.local.LocalMusic
+import org.simpmusic.radio.local.LocalPlayer
+import org.simpmusic.radio.local.LocalSong
 
 private val Bg = Color(0xFF0E1110)
 private val Surface = Color(0xFF1D2220)
@@ -124,6 +127,7 @@ private sealed interface Page {
     data class Stations(val title: String, val load: suspend () -> List<RadioStation>) : Page
     data class Facets(val title: String, val kind: String) : Page
     data object Favourites : Page
+    data object Local : Page
 }
 
 private sealed interface Load<out T> {
@@ -138,6 +142,7 @@ fun RadioScreen(
     api: RadioBrowserApi,
     store: RadioStore,
     player: RadioPlayer,
+    localPlayer: LocalPlayer,
     modifier: Modifier = Modifier,
     bottomPadding: androidx.compose.ui.unit.Dp = 120.dp,
 ) {
@@ -150,6 +155,7 @@ fun RadioScreen(
             is Page.Stations -> StationListPage(page.title, page.load, api, store, player, bottomPadding) { stack.removeAt(stack.lastIndex) }
             is Page.Facets -> FacetPage(page.title, page.kind, api, bottomPadding, { stack.removeAt(stack.lastIndex) }) { stack.add(it) }
             Page.Favourites -> FavouritesPage(api, store, player, bottomPadding) { stack.removeAt(stack.lastIndex) }
+            Page.Local -> LocalMusicPage(localPlayer, bottomPadding) { stack.removeAt(stack.lastIndex) }
         }
     }
 }
@@ -188,7 +194,8 @@ private fun HomePage(
                 Spacer(Modifier.height(14.dp))
             }
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { Chip("Favourites", true) { open(Page.Favourites) } }
+                item { Chip("My music", true) { open(Page.Local) } }
+                item { Chip("Favourites", false) { open(Page.Favourites) } }
                 item { Chip("Countries", false) { open(Page.Facets("Countries", "country")) } }
                 item { Chip("Languages", false) { open(Page.Facets("Languages", "language")) } }
                 item { Chip("Genres", false) { open(Page.Facets("Genres", "tag")) } }
@@ -453,5 +460,125 @@ private fun SearchBox(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+
+private enum class LocalSort(val label: String) {
+    Title("Title A–Z"),
+    Artist("Artist"),
+    Album("Album"),
+    Newest("Recently added"),
+    Longest("Longest first"),
+}
+
+@Composable
+private fun LocalMusicPage(
+    player: LocalPlayer,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    back: () -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val permission =
+        if (android.os.Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_AUDIO else android.Manifest.permission.READ_EXTERNAL_STORAGE
+    var granted by remember {
+        mutableStateOf(androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+    }
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted = it }
+    var songs by remember { mutableStateOf<List<LocalSong>?>(null) }
+    var query by remember { mutableStateOf("") }
+    var sort by remember { mutableStateOf(LocalSort.Title) }
+    var sortOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(granted) { if (granted) songs = LocalMusic.scan(context) }
+    Column(Modifier.fillMaxSize().padding(top = 48.dp)) {
+        PageHeader("My music", back) {
+            Box {
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { sortOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Sort", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(" ▾", color = Muted, fontSize = 14.sp)
+                }
+                DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                    LocalSort.values().forEach { o ->
+                        DropdownMenuItem(text = { Text(if (o == sort) "✓ ${o.label}" else o.label) }, onClick = { sort = o; sortOpen = false })
+                    }
+                }
+            }
+        }
+        if (!granted) {
+            Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Allow access to the music on your phone to play it here.", color = Muted, fontSize = 15.sp)
+                Spacer(Modifier.height(16.dp))
+                Chip("Allow access", true) { launcher.launch(permission) }
+            }
+            return@Column
+        }
+        val all = songs
+        if (all == null) {
+            Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = Mint) }
+            return@Column
+        }
+        Box(Modifier.padding(horizontal = 20.dp)) { SearchBox(query, { query = it }, "Search your music") {} }
+        Spacer(Modifier.height(8.dp))
+        val shown =
+            remember(all, query, sort) {
+                val q = query.trim().lowercase()
+                val filtered = if (q.isEmpty()) all else all.filter { it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q) }
+                when (sort) {
+                    LocalSort.Title -> filtered.sortedBy { it.title.lowercase() }
+                    LocalSort.Artist -> filtered.sortedWith(compareBy({ it.artist.lowercase() }, { it.title.lowercase() }))
+                    LocalSort.Album -> filtered.sortedWith(compareBy({ it.album.lowercase() }, { it.title.lowercase() }))
+                    LocalSort.Newest -> filtered.sortedByDescending { it.addedAt }
+                    LocalSort.Longest -> filtered.sortedByDescending { it.durationMs }
+                }
+            }
+        if (shown.isEmpty()) {
+            Text(if (all.isEmpty()) "No music files found on this phone." else "No matches.", color = Muted, modifier = Modifier.padding(20.dp))
+            return@Column
+        }
+        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Chip("▶ Play all", true) { scope.launch { player.play(shown, 0) } }
+            Chip("Shuffle", false) { val m = shown.shuffled(); scope.launch { player.play(m, 0) } }
+            Text("${shown.size} songs", color = Muted, fontSize = 13.sp)
+        }
+        LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = bottomPadding)) {
+            itemsIndexed(shown) { i, s ->
+                Row(Modifier.fillMaxWidth().clickable { scope.launch { player.play(shown, i) } }.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    LocalArt(s, Modifier.size(52.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(s.title, color = Ink, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(s.artist + if (s.album.isNotBlank()) " · ${s.album}" else "", color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    val sec = s.durationMs / 1000
+                    Text("%d:%02d".format(sec / 60, sec % 60), color = Muted, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocalArt(
+    song: LocalSong,
+    modifier: Modifier,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val res = remember(song.id) { org.simpmusic.radio.data.FallbackArt.resFor(context, song.id.toString()) }
+    Box(modifier.clip(RoundedCornerShape(14.dp)).background(Surface)) {
+        val fallback: @Composable () -> Unit = {
+            if (res != 0) androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(res), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+        }
+        coil3.compose.SubcomposeAsyncImage(
+            model = song.albumArt,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            loading = { fallback() },
+            error = { fallback() },
+        )
     }
 }

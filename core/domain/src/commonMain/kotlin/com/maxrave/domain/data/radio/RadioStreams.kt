@@ -14,6 +14,9 @@ object RadioStreams {
 
     fun isRadio(mediaId: String?): Boolean = mediaId != null && mediaId.startsWith(PREFIX)
 
+    /** Files from the phone are queued as "radio:local-<id>" so they share the direct-URI path, but they are not live. */
+    fun isLocal(mediaId: String?): Boolean = mediaId != null && mediaId.startsWith(PREFIX + "local-")
+
     fun idFor(stationUuid: String): String = PREFIX + stationUuid
 
     fun register(radioId: String, streamUrl: String) {

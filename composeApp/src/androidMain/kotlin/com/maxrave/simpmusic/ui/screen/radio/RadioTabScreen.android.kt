@@ -20,7 +20,9 @@ actual fun RadioTabScreen(innerPadding: PaddingValues) {
     val api = remember { RadioBrowserApi() }
     val store = remember { RadioStore(context) }
     val player = remember(handler) { RadioPlayer(context, handler, api, store).also { it.restoreRegistry() } }
+    val localPlayer = remember(handler) { org.simpmusic.radio.local.LocalPlayer(context, handler) }
     RadioScreen(
+        localPlayer = localPlayer,
         api = api,
         store = store,
         player = player,

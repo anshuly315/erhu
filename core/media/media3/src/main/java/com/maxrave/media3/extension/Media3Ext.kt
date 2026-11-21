@@ -254,14 +254,14 @@ private fun Track.toRadioMediaItem(): MediaItem {
         .Builder()
         .setMediaId(this.videoId)
         .setUri(url)
-        .setLiveConfiguration(MediaItem.LiveConfiguration.Builder().build())
+        .apply { if (!RadioStreams.isLocal(videoId)) setLiveConfiguration(MediaItem.LiveConfiguration.Builder().build()) }
         .setMediaMetadata(
             MediaMetadata
                 .Builder()
                 .setTitle(this.title)
                 .setArtist(this.artists.toListName().connectArtists())
                 .setArtworkUri(this.thumbnails?.lastOrNull()?.url?.toUri())
-                .setDescription(RADIO_DESCRIPTION)
+                .setDescription(if (RadioStreams.isLocal(this.videoId)) "local" else RADIO_DESCRIPTION)
                 .setIsPlayable(true)
                 .build(),
         ).build()
