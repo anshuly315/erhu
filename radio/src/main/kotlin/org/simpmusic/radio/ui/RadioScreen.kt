@@ -2,6 +2,7 @@ package org.simpmusic.radio.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +65,21 @@ internal val OnMint = Color(0xFF0B2A1A)
 internal val Muted = Color(0xFF9BA6A0)
 internal val Ink = Color(0xFFF2F5F3)
 
+/** Frosted-glass look for the radio module: translucent light gradient with a bright rim, over the ambient backdrop. */
+internal fun Modifier.glass(shape: androidx.compose.ui.graphics.Shape): Modifier =
+    this.clip(shape)
+        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x2EFFFFFF), Color(0x12FFFFFF))))
+        .border(1.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x66FFFFFF), Color(0x14FFFFFF))), shape)
+
+/** The page backdrop: dark base with soft coloured glows so the glass has something to frost. */
+internal fun Modifier.ambientBackdrop(): Modifier =
+    this.background(Bg).background(
+        androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0x3350C8A0), Color.Transparent), center = androidx.compose.ui.geometry.Offset(150f, 250f), radius = 900f),
+    ).background(
+        androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0x33607CFF), Color.Transparent), center = androidx.compose.ui.geometry.Offset(1000f, 1500f), radius = 1100f),
+    )
+
+
 private enum class StationSort(val label: String) {
     Default("Default order"),
     NameAsc("Name A–Z"),
@@ -106,7 +122,7 @@ private fun SortButton(
     var open by remember { mutableStateOf(false) }
     Box {
         Row(
-            Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { open = true }
+            Modifier.glass(RoundedCornerShape(50)).clickable { open = true }
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -154,7 +170,7 @@ fun RadioScreen(
     val modeState = rememberViewMode(store)
     val page = stack.last()
     BackHandler(enabled = stack.size > 1) { stack.removeAt(stack.lastIndex) }
-    Box(modifier.fillMaxSize().background(Bg)) {
+    Box(modifier.fillMaxSize().ambientBackdrop()) {
         when (page) {
             Page.Home -> HomePage(api, store, player, bottomPadding) { stack.add(it) }
             is Page.Stations -> StationListPage(page.title, page.load, api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
@@ -367,7 +383,7 @@ private fun FacetPage(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (kind == "country") {
-                                Box(Modifier.size(36.dp).clip(CircleShape).background(Surface), Alignment.Center) {
+                                Box(Modifier.size(36.dp).glass(CircleShape), Alignment.Center) {
                                     Text(f.code.take(2).uppercase(), color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 }
                                 Spacer(Modifier.width(12.dp))
@@ -437,7 +453,7 @@ internal fun MoreChip(
     onToggle: () -> Unit,
 ) {
     Box(
-        Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF))
+        Modifier.glass(RoundedCornerShape(50))
             .combinedClickable(onClick = onToggle, onLongClick = onToggle).padding(horizontal = 16.dp, vertical = 9.dp),
     ) {
         Text(label + if (expanded) " ▴" else " ▾", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -451,7 +467,7 @@ internal fun SearchBox(
     hint: String = "Search stations, countries, genres",
     onSearch: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(Surface).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(48.dp).glass(RoundedCornerShape(24.dp)).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("⌕", color = Muted, fontSize = 20.sp)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f)) {
@@ -567,12 +583,12 @@ private fun LocalMusicPage(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "Folders", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium,
-                    modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { foldersOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
+                    modifier = Modifier.glass(RoundedCornerShape(50)).clickable { foldersOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
                 )
                 Spacer(Modifier.width(8.dp))
                 Box {
                     Row(
-                        Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF)).clickable { sortOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        Modifier.glass(RoundedCornerShape(50)).clickable { sortOpen = true }.padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("Sort", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -628,5 +644,5 @@ fun LocalMusicScreen(
     bottomPadding: androidx.compose.ui.unit.Dp = 120.dp,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.fillMaxSize().background(Bg)) { LocalMusicPage(player, bottomPadding, null) }
+    Box(modifier.fillMaxSize().ambientBackdrop()) { LocalMusicPage(player, bottomPadding, null) }
 }

@@ -83,7 +83,7 @@ internal fun NowPlayingCard(modifier: Modifier = Modifier) {
         }
     }
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Surface).padding(10.dp),
+        modifier.fillMaxWidth().glass(RoundedCornerShape(18.dp)).padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StationArt(s, Modifier.size(52.dp), 12.dp)

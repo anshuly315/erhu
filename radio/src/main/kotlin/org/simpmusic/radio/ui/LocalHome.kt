@@ -202,36 +202,38 @@ internal fun LocalHome(
         }
         LPage.Albums -> Column(Modifier.fillMaxSize()) {
             PageHeader("Albums", ::back)
-            LazyVerticalGrid(GridCells.Adaptive(150.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(albums, key = { it.albumId }) { a -> AlbumTile(a, Modifier, { o, c -> GroupMenu(o, c, a.songs, a.title, library, playlists, ::play) }) { go(LPage.Album(a.albumId)) } }
-            }
+            PinchCollection(
+                items = albums, level = level, bottomPadding = bottomPadding, onLevel = ::setLevel,
+                title = { it.title }, subtitle = { it.artist },
+                art = { a, m, c -> LocalArt(a.songs.first(), m, c) },
+                menu = { a, o, c -> GroupMenu(o, c, a.songs, a.title, library, playlists, ::play) },
+                onClick = { go(LPage.Album(albums[it].albumId)) },
+            )
         }
         LPage.Artists -> Column(Modifier.fillMaxSize()) {
             PageHeader("Artists", ::back)
-            LazyColumn(contentPadding = PaddingValues(bottom = bottomPadding)) {
-                items(artists, key = { it.name }) { a ->
-                    var open by remember { mutableStateOf(false) }
-                    Row(Modifier.fillMaxWidth().combinedClickable(onClick = { go(LPage.Artist(a.name)) }, onLongClick = { open = true }).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        GroupMenu(open, { open = false }, a.songs, a.name, library, playlists, ::play)
-                        LocalArt(a.songs.first(), Modifier.size(52.dp), 26.dp)
-                        Spacer(Modifier.width(14.dp))
-                        Column {
-                            Text(a.name, color = Ink, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("${a.songs.size} songs · ${a.albums} albums", color = Muted, fontSize = 12.sp)
-                        }
-                    }
-                }
-            }
+            PinchCollection(
+                items = artists, level = level, bottomPadding = bottomPadding, onLevel = ::setLevel,
+                title = { it.name }, subtitle = { "${it.songs.size} songs · ${it.albums} albums" },
+                art = { a, m, c -> LocalArt(a.songs.first(), m, c) },
+                menu = { a, o, c -> GroupMenu(o, c, a.songs, a.name, library, playlists, ::play) },
+                onClick = { go(LPage.Artist(artists[it].name)) },
+            )
         }
         LPage.Playlists -> {
             var creating by remember { mutableStateOf(false) }
             if (creating) NameDialog("New playlist", "", "Create", { creating = false }) { n -> val p = library.createPlaylist(n); creating = false; go(LPage.Playlist(p.id)) }
             Column(Modifier.fillMaxSize()) {
-                PageHeader("Playlists", ::back)
-                LazyVerticalGrid(GridCells.Adaptive(150.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    item { NewTile(Modifier) { creating = true } }
-                    items(playlists, key = { it.id }) { p -> PlaylistTile(p, ::songsOf, Modifier, { o, c -> PlaylistMenu(o, c, p, songsOf(p), library, ::play) }) { go(LPage.Playlist(p.id)) } }
+                PageHeader("Playlists", ::back) {
+                    Text("+ New", color = Mint, fontSize = 14.sp, modifier = Modifier.clip(RoundedCornerShape(50)).clickable { creating = true }.padding(horizontal = 12.dp, vertical = 6.dp))
                 }
+                PinchCollection(
+                    items = playlists, level = level, bottomPadding = bottomPadding, onLevel = ::setLevel,
+                    title = { it.name }, subtitle = { "${it.songIds.size} songs" },
+                    art = { p, m, _ -> PlaylistArt(p, songsOf(p), m) },
+                    menu = { p, o, c -> PlaylistMenu(o, c, p, songsOf(p), library, ::play) },
+                    onClick = { go(LPage.Playlist(playlists[it].id)) },
+                )
             }
         }
     }
