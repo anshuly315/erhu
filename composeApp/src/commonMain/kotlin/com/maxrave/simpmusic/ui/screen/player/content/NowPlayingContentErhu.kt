@@ -34,7 +34,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
@@ -213,7 +217,7 @@ fun NowPlayingContentErhu(
     }
 }
 
-/** One big card per track with the info panel inside it; the neighbours peek in from the sides. */
+/** erhu's carousel card: artwork square plus the metadata beneath it on one gradient card; dimmed neighbours tap to select. */
 @Composable
 private fun Carousel(
     state: NowPlayingContentState,
@@ -222,13 +226,18 @@ private fun Carousel(
     colors: ErhuColors,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val cardW = maxWidth * 0.80f
-        val cardH = minOf(maxHeight, cardW * 1.2f)
-        val sidePad = (maxWidth - cardW) / 2
+        val pad = 10.dp
+        val showAlbum = maxHeight >= 340.dp
+        val metaH = 62.dp + if (showAlbum) 18.dp else 0.dp
+        val artSide = minOf(maxWidth * 0.8f - pad * 2, maxHeight - metaH - pad * 2).coerceAtLeast(140.dp)
+        val cardW = artSide + pad * 2
+        val cardH = artSide + pad * 2 + metaH
+        val sidePad = ((maxWidth - cardW) / 2).coerceAtLeast(0.dp)
+        val shape = RoundedCornerShape(28.dp + pad)
         HorizontalPager(
             state = state.artworkPagerState,
             contentPadding = PaddingValues(horizontal = sidePad),
-            pageSpacing = 10.dp,
+            pageSpacing = 12.dp,
             beyondViewportPageCount = 1,
             verticalAlignment = Alignment.CenterVertically,
             userScrollEnabled = state.artworkQueue.isNotEmpty(),
@@ -243,80 +252,96 @@ private fun Carousel(
                     if (isCurrent) state.screenData.thumbnailURL else track?.thumbnails?.maxByOrNull { it.width * it.height }?.url,
                 )
             }
+            val title = if (isCurrent) state.screenData.nowPlayingTitle else track?.title.orEmpty()
+            val artist = if (isCurrent) state.screenData.artistName else track?.artists?.joinToString { it.name }.orEmpty()
+            val album = track?.album?.name.orEmpty()
             Box(
                 Modifier
-                    .fillMaxWidth()
                     .height(cardH)
-                    .graphicsLayer {
-                        val s = lerp(1f, 0.9f, offset)
-                        scaleX = s
-                        scaleY = s
-                        alpha = lerp(1f, 0.55f, offset)
-                    }.clip(RoundedCornerShape(32.dp))
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .erhuCardSurface(colors, shape, artSide + pad * 2, glass)
                     .clickable(enabled = !isCurrent) { actions.onSeekToQueueIndex(page) },
             ) {
-                AsyncImage(
-                    model =
-                        ImageRequest
-                            .Builder(LocalPlatformContext.current)
-                            .data(url)
-                            .diskCachePolicy(CachePolicy.ENABLED)
-                            .crossfade(300)
-                            .build(),
-                    contentDescription = track?.title,
-                    contentScale = ContentScale.Crop,
-                    placeholder = rememberHolderPainter(),
-                    error = rememberHolderPainter(),
-                    onSuccess = { if (isCurrent) actions.onArtworkBitmap(it.result.image.toImageBitmap()) },
-                    onError = {
-                        val fallback = url?.replace("maxresdefault", "hqdefault")
-                        if (fallback != null && fallback != url) url = fallback
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
-                // The info panel sits inside the card, on the picture
-                val title = if (isCurrent) state.screenData.nowPlayingTitle else track?.title.orEmpty()
-                val artist = if (isCurrent) state.screenData.artistName else track?.artists?.joinToString { it.name }.orEmpty()
-                val album = track?.album?.name.orEmpty()
-                Row(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Brush.linearGradient(colors.card.map { it.copy(alpha = if (glass) 0.72f else 0.9f) }))
-                        .border(1.dp, colors.rim.copy(alpha = 0.35f), RoundedCornerShape(22.dp))
-                        .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(title, color = colors.content, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            artist,
-                            color = colors.content.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = if (isCurrent) Modifier.clickable { actions.onNavigateToArtist() } else Modifier,
-                        )
-                        if (album.isNotBlank()) {
-                            Text(album, color = colors.content.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                    if (isCurrent) {
-                        RoundButton(44.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.ToggleLike) }) {
-                            Icon(
-                                if (state.controllerState.isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
-                                contentDescription = "",
-                                tint = if (state.controllerState.isLiked) colors.accent else colors.content,
+                Column(Modifier.fillMaxSize().padding(pad)) {
+                    AsyncImage(
+                        model =
+                            ImageRequest
+                                .Builder(LocalPlatformContext.current)
+                                .data(url)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .crossfade(300)
+                                .build(),
+                        contentDescription = track?.title,
+                        contentScale = ContentScale.Crop,
+                        placeholder = rememberHolderPainter(),
+                        error = rememberHolderPainter(),
+                        onSuccess = { if (isCurrent) actions.onArtworkBitmap(it.result.image.toImageBitmap()) },
+                        onError = {
+                            val fallback = url?.replace("maxresdefault", "hqdefault")
+                            if (fallback != null && fallback != url) url = fallback
+                        },
+                        modifier = Modifier.size(artSide).clip(RoundedCornerShape(28.dp)),
+                    )
+                    Row(
+                        Modifier.fillMaxWidth().height(metaH).padding(start = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                            Text(title, color = colors.content, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                artist,
+                                color = colors.content.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = if (isCurrent) Modifier.clickable { actions.onNavigateToArtist() } else Modifier,
                             )
+                            if (showAlbum && album.isNotBlank()) {
+                                Text(album, color = colors.content.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (isCurrent) {
+                            RoundButton(44.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.ToggleLike) }) {
+                                Icon(
+                                    if (state.controllerState.isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
+                                    contentDescription = "",
+                                    tint = if (state.controllerState.isLiked) colors.accent else colors.content,
+                                )
+                            }
                         }
                     }
                 }
+                if (offset > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f * offset)))
             }
         }
     }
 }
+
+/** erhu's card material: diagonal gradient body, light along the top, a soft shade under the artwork, lower shade and a rim. */
+private fun Modifier.erhuCardSurface(
+    colors: ErhuColors,
+    shape: androidx.compose.ui.graphics.Shape,
+    infoTop: Dp,
+    glass: Boolean,
+): Modifier =
+    drawWithCache {
+        val bodyAlpha = if (glass) 0.6f else 1f
+        val body = Brush.linearGradient(colors.card.map { it.copy(alpha = it.alpha * bodyAlpha) }, start = Offset.Zero, end = Offset(size.width, size.height))
+        val top = infoTop.toPx()
+        val light = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.Transparent), startY = 0f, endY = 22.dp.toPx())
+        val step = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.16f), Color.Transparent), startY = top - 1f, endY = top + 14.dp.toPx())
+        val lower = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.16f)), startY = size.height * 0.82f, endY = size.height)
+        val rim = Brush.verticalGradient(listOf(colors.rim.copy(alpha = 0.5f), colors.rim.copy(alpha = 0.12f), Color.Black.copy(alpha = 0.22f)))
+        val outline = shape.createOutline(size, layoutDirection, this)
+        onDrawBehind {
+            drawRect(body)
+            drawRect(light)
+            drawRect(step)
+            drawRect(lower)
+            drawOutline(outline, rim, style = Stroke(width = 2.dp.toPx()))
+        }
+    }
 
 @Composable
 private fun RoundButton(
