@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.LocalPlatformContext
@@ -73,7 +75,6 @@ import com.maxrave.simpmusic.ui.screen.player.content.expressive.WavySeekBar
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlin.math.absoluteValue
 
-private val Pink = Color(0xFFFF4F8B)
 private val LyricMarker = Regex("<\\d+:\\d+(\\.\\d+)?>")
 
 /**
@@ -93,6 +94,7 @@ fun NowPlayingContentErhu(
     glass: Boolean,
 ) {
     val seed = state.startColor.value
+    val colors = rememberErhuColors(state.screenData.bitmap, seed)
     val c = state.controllerState
     val lyricLine =
         state.screenData.lyricsData
@@ -114,7 +116,7 @@ fun NowPlayingContentErhu(
                     if (glass) {
                         listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.55f), Color.Black.copy(alpha = 0.9f))
                     } else {
-                        listOf(seed, state.endColor.value.copy(alpha = 0.85f), Color(0xFF0B0B0F))
+                        listOf(colors.gradient[0], colors.gradient[1], if (colors.content.luminance() > 0.5f) Color.Black.copy(alpha = 0.6f).compositeOver(colors.gradient[2]) else colors.gradient[2])
                     },
                 ),
             ),
@@ -124,39 +126,39 @@ fun NowPlayingContentErhu(
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 16.dp),
             ) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RoundButton(44.dp, Color.White.copy(alpha = 0.14f), onClick = actions.onDismiss) {
-                        Icon(state.dismissIcon, contentDescription = "", tint = Color.White)
+                    RoundButton(44.dp, colors.content.copy(alpha = 0.14f), onClick = actions.onDismiss) {
+                        Icon(state.dismissIcon, contentDescription = "", tint = colors.content)
                     }
                     Text(
                         text = state.screenData.playlistName,
                         modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = colors.content.copy(alpha = 0.8f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelLarge,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
-                    RoundButton(44.dp, Color.White.copy(alpha = 0.14f), onClick = actions.onShowMoreSheet) {
-                        Icon(SimpIcons.MoreVert, contentDescription = "", tint = Color.White)
+                    RoundButton(44.dp, colors.content.copy(alpha = 0.14f), onClick = actions.onShowMoreSheet) {
+                        Icon(SimpIcons.MoreVert, contentDescription = "", tint = colors.content)
                     }
                 }
 
-                Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 10.dp)) { Carousel(state, actions, glass) }
+                Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 10.dp)) { Carousel(state, actions, glass, colors) }
 
                 // 0:00 · 7 / 930 · 4:10
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(state.timelineState.elapsedLabel(state.sliderValue / 100f), color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    Text(state.timelineState.elapsedLabel(state.sliderValue / 100f), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     if (state.artworkQueue.isNotEmpty()) {
-                        Text("${state.currentOrderIndex + 1} / ${state.artworkQueue.size}", color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
+                        Text("${state.currentOrderIndex + 1} / ${state.artworkQueue.size}", color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
                     }
-                    Text(state.timelineState.lengthLabel(), color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    Text(state.timelineState.lengthLabel(), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                 }
                 WavySeekBar(
                     progressFraction = state.sliderValue / 100f,
                     isPlaying = c.isPlaying,
-                    activeColor = Pink,
-                    trackColor = Color.White.copy(alpha = 0.22f),
-                    thumbColor = Pink,
+                    activeColor = colors.accent,
+                    trackColor = colors.content.copy(alpha = 0.22f),
+                    thumbColor = colors.accent,
                     onSliderChange = actions.onSliderChange,
                     onSliderChangeFinished = actions.onSliderChangeFinished,
                 )
@@ -166,25 +168,25 @@ fun NowPlayingContentErhu(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     SmallIcon(active = c.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) {
-                        Icon(SimpIcons.Shuffle, "", tint = Color.White, modifier = Modifier.size(22.dp))
+                        Icon(SimpIcons.Shuffle, "", tint = colors.content, modifier = Modifier.size(22.dp))
                     }
                     RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) {
-                        Icon(SimpIcons.SkipPrevious, "", tint = Color.White.copy(alpha = if (c.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
+                        Icon(SimpIcons.SkipPrevious, "", tint = colors.content.copy(alpha = if (c.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
                     }
-                    RoundButton(68.dp, Pink, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) {
-                        Icon(if (c.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow, "", tint = Color.White, modifier = Modifier.size(34.dp))
+                    RoundButton(68.dp, colors.accent, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) {
+                        Icon(if (c.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow, "", tint = colors.onAccent, modifier = Modifier.size(34.dp))
                     }
                     RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) {
-                        Icon(SimpIcons.SkipNext, "", tint = Color.White.copy(alpha = if (c.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
+                        Icon(SimpIcons.SkipNext, "", tint = colors.content.copy(alpha = if (c.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
                     }
                     SmallIcon(active = c.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) {
-                        Icon(if (c.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat, "", tint = Color.White, modifier = Modifier.size(22.dp))
+                        Icon(if (c.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat, "", tint = colors.content, modifier = Modifier.size(22.dp))
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    SmallIcon(active = false, onClick = actions.onShowAddToPlaylist) { Icon(SimpIcons.Add, "", tint = Color.White) }
-                    SmallIcon(active = false, onClick = actions.onShowInfo) { Icon(SimpIcons.LibraryMusic, "", tint = Color.White) }
-                    SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = Color.White) }
+                    SmallIcon(active = false, onClick = actions.onShowAddToPlaylist) { Icon(SimpIcons.Add, "", tint = colors.content) }
+                    SmallIcon(active = false, onClick = actions.onShowInfo) { Icon(SimpIcons.LibraryMusic, "", tint = colors.content) }
+                    SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = colors.content) }
                 }
 
                 // Lyrics card, tap to open the full page
@@ -193,18 +195,18 @@ fun NowPlayingContentErhu(
                         .fillMaxWidth()
                         .padding(top = 4.dp, bottom = 12.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(if (glass) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.35f))
+                        .background(Brush.linearGradient(colors.card.map { it.copy(alpha = if (glass) 0.7f else 0.92f) }))
                         .clickable(onClick = actions.onShowFullscreenLyrics)
                         .padding(horizontal = 18.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Lyrics", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text("Lyrics", color = colors.content, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         if (lyricLine.isNotBlank()) {
-                            Text(lyricLine, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(lyricLine, color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    Icon(SimpIcons.OpenInFull, "", tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+                    Icon(SimpIcons.OpenInFull, "", tint = colors.content.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -217,6 +219,7 @@ private fun Carousel(
     state: NowPlayingContentState,
     actions: NowPlayingContentActions,
     glass: Boolean,
+    colors: ErhuColors,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val cardW = maxWidth * 0.80f
@@ -281,22 +284,23 @@ private fun Carousel(
                         .fillMaxWidth()
                         .padding(12.dp)
                         .clip(RoundedCornerShape(22.dp))
-                        .background(if (glass) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.5f))
+                        .background(Brush.linearGradient(colors.card.map { it.copy(alpha = if (glass) 0.72f else 0.9f) }))
+                        .border(1.dp, colors.rim.copy(alpha = 0.35f), RoundedCornerShape(22.dp))
                         .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(title, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(title, color = colors.content, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             artist,
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = colors.content.copy(alpha = 0.8f),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = if (isCurrent) Modifier.clickable { actions.onNavigateToArtist() } else Modifier,
                         )
                         if (album.isNotBlank()) {
-                            Text(album, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(album, color = colors.content.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     if (isCurrent) {
@@ -304,7 +308,7 @@ private fun Carousel(
                             Icon(
                                 if (state.controllerState.isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                                 contentDescription = "",
-                                tint = if (state.controllerState.isLiked) Pink else Color.White,
+                                tint = if (state.controllerState.isLiked) colors.accent else colors.content,
                             )
                         }
                     }
