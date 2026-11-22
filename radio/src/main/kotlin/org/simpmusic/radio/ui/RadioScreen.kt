@@ -3,6 +3,12 @@ package org.simpmusic.radio.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.drawBackdrop
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -65,11 +71,41 @@ internal val OnMint = Color(0xFF0B2A1A)
 internal val Muted = Color(0xFF9BA6A0)
 internal val Ink = Color(0xFFF2F5F3)
 
-/** Frosted-glass look for the radio module: translucent light gradient with a bright rim, over the ambient backdrop. */
-internal fun Modifier.glass(shape: androidx.compose.ui.graphics.Shape): Modifier =
-    this.clip(shape)
-        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x2EFFFFFF), Color(0x12FFFFFF))))
-        .border(1.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x66FFFFFF), Color(0x14FFFFFF))), shape)
+/** The backdrop the glass panels of Radio and Local refract (the ambient page background). */
+internal val LocalGlassSource = androidx.compose.runtime.compositionLocalOf<com.kyant.backdrop.backdrops.LayerBackdrop?> { null }
+
+/** Liquid glass like the SimpMusic pages: blur, vibrancy and lens over the backdrop; a flat frost when none is provided. */
+@androidx.compose.runtime.Composable
+internal fun Modifier.glass(shape: androidx.compose.ui.graphics.Shape): Modifier {
+    val backdrop = LocalGlassSource.current
+    val rim = androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x66FFFFFF), Color(0x14FFFFFF)))
+    if (backdrop == null) {
+        return this.clip(shape)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x2EFFFFFF), Color(0x12FFFFFF))))
+            .border(1.dp, rim, shape)
+    }
+    return this.drawBackdrop(
+        backdrop = backdrop,
+        effects = {
+            vibrancy()
+            colorControls(brightness = 0.05f, contrast = 1f, saturation = 1.5f)
+            blur(10f.dp.toPx())
+            lens(12f.dp.toPx(), size.minDimension / 2f, true)
+        },
+        shape = { shape },
+        onDrawSurface = { drawRect(Color.White.copy(alpha = 0.08f)) },
+    ).border(1.dp, rim, shape)
+}
+
+/** The page: ambient glows are the glass source; [content] sits beside it, never inside it. */
+@androidx.compose.runtime.Composable
+internal fun GlassPage(modifier: Modifier = Modifier, content: @androidx.compose.runtime.Composable () -> Unit) {
+    val backdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
+    Box(modifier.fillMaxSize()) {
+        Box(Modifier.matchParentSize().ambientBackdrop().layerBackdrop(backdrop))
+        androidx.compose.runtime.CompositionLocalProvider(LocalGlassSource provides backdrop) { content() }
+    }
+}
 
 /** The page backdrop: dark base with soft coloured glows so the glass has something to frost. */
 internal fun Modifier.ambientBackdrop(): Modifier =
@@ -170,7 +206,7 @@ fun RadioScreen(
     val modeState = rememberViewMode(store)
     val page = stack.last()
     BackHandler(enabled = stack.size > 1) { stack.removeAt(stack.lastIndex) }
-    Box(modifier.fillMaxSize().ambientBackdrop()) {
+    GlassPage(modifier) {
         when (page) {
             Page.Home -> HomePage(api, store, player, bottomPadding) { stack.add(it) }
             is Page.Stations -> StationListPage(page.title, page.load, api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
@@ -644,5 +680,5 @@ fun LocalMusicScreen(
     bottomPadding: androidx.compose.ui.unit.Dp = 120.dp,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.fillMaxSize().ambientBackdrop()) { LocalMusicPage(player, bottomPadding, null) }
+    GlassPage(modifier) { LocalMusicPage(player, bottomPadding, null) }
 }

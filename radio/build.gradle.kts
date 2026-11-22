@@ -42,6 +42,8 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.coroutines.android)
     implementation(libs.activity.compose)
+    // The same liquid-glass backdrop the SimpMusic pages use.
+    implementation(libs.liquid.glass)
     // Reads and writes tags in one chosen local file (Edit tags in the player menu).
     implementation("net.jthink:jaudiotagger:3.0.1")
     // VYBE: on-device text embedding for describing what to listen to.
