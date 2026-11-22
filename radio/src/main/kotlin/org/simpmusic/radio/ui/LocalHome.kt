@@ -100,10 +100,17 @@ internal fun LocalHome(
     fun songsOf(p: LocalPlaylist) = p.songIds.mapNotNull { byId[it] }
     var query by remember { mutableStateOf("") }
     val viewPrefs = remember { context.getSharedPreferences("local_view", android.content.Context.MODE_PRIVATE) }
+    // Each kind of list keeps its own pinch level: songs read well as a list, albums as a grid.
     val level = remember { mutableIntStateOf(viewPrefs.getInt("level", 2).coerceIn(0, LEVEL_MAX)) }
     fun setLevel(l: Int) { level.intValue = l; viewPrefs.edit().putInt("level", l).apply() }
+    val albumLevel = remember { mutableIntStateOf(viewPrefs.getInt("level_albums", 4).coerceIn(0, LEVEL_MAX)) }
+    fun setAlbumLevel(l: Int) { albumLevel.intValue = l; viewPrefs.edit().putInt("level_albums", l).apply() }
+    val artistLevel = remember { mutableIntStateOf(viewPrefs.getInt("level_artists", 3).coerceIn(0, LEVEL_MAX)) }
+    fun setArtistLevel(l: Int) { artistLevel.intValue = l; viewPrefs.edit().putInt("level_artists", l).apply() }
+    val playlistLevel = remember { mutableIntStateOf(viewPrefs.getInt("level_playlists", 4).coerceIn(0, LEVEL_MAX)) }
+    fun setPlaylistLevel(l: Int) { playlistLevel.intValue = l; viewPrefs.edit().putInt("level_playlists", l).apply() }
 
-    ProvideLocalDeleter(library, onDeleted) {
+    ProvideLocalDeleter(library, { ids -> player.removeFromQueue(ids); onDeleted(ids) }) {
     when (page) {
         LPage.Home -> {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPadding)) {
@@ -203,7 +210,7 @@ internal fun LocalHome(
         LPage.Albums -> Column(Modifier.fillMaxSize()) {
             PageHeader("Albums", ::back)
             PinchCollection(
-                items = albums, level = level, bottomPadding = bottomPadding, onLevel = ::setLevel,
+                items = albums, level = albumLevel, bottomPadding = bottomPadding, onLevel = ::setAlbumLevel,
                 title = { it.title }, subtitle = { it.artist },
                 art = { a, m, c -> LocalArt(a.songs.first(), m, c) },
                 menu = { a, o, c -> GroupMenu(o, c, a.songs, a.title, library, playlists, ::play) },
@@ -213,7 +220,7 @@ internal fun LocalHome(
         LPage.Artists -> Column(Modifier.fillMaxSize()) {
             PageHeader("Artists", ::back)
             PinchCollection(
-                items = artists, level = level, bottomPadding = bottomPadding, onLevel = ::setLevel,
+                items = artists, level = artistLevel, bottomPadding = bottomPadding, onLevel = ::setArtistLevel,
                 title = { it.name }, subtitle = { "${it.songs.size} songs · ${it.albums} albums" },
                 art = { a, m, c -> LocalArt(a.songs.first(), m, c) },
                 menu = { a, o, c -> GroupMenu(o, c, a.songs, a.name, library, playlists, ::play) },
@@ -228,7 +235,7 @@ internal fun LocalHome(
                     Text("+ New", color = Mint, fontSize = 14.sp, modifier = Modifier.clip(RoundedCornerShape(50)).clickable { creating = true }.padding(horizontal = 12.dp, vertical = 6.dp))
                 }
                 PinchCollection(
-                    items = playlists, level = level, bottomPadding = bottomPadding, onLevel = ::setLevel,
+                    items = playlists, level = playlistLevel, bottomPadding = bottomPadding, onLevel = ::setPlaylistLevel,
                     title = { it.name }, subtitle = { "${it.songIds.size} songs" },
                     art = { p, m, _ -> PlaylistArt(p, songsOf(p), m) },
                     menu = { p, o, c -> PlaylistMenu(o, c, p, songsOf(p), library, ::play) },

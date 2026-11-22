@@ -308,7 +308,8 @@ internal class SongRepositoryImpl(
 
     override suspend fun updateListenCount(videoId: String) =
         withContext(Dispatchers.IO) {
-            localDataSource.updateListenCount(videoId)
+            // A station or a podcast episode is not a song: it must not climb Most played.
+            if (com.maxrave.domain.data.radio.RadioStreams.isSong(videoId)) localDataSource.updateListenCount(videoId)
         }
 
     override suspend fun resetTotalPlayTime(videoId: String) =
@@ -341,7 +342,8 @@ internal class SongRepositoryImpl(
         likeStatus: Int,
     ) = withContext(Dispatchers.Main) {
         localDataSource.updateLiked(likeStatus, videoId)
-        if (likeStatus == 1 && dataStoreManager.autoDownloadLikedSongs.first() == TRUE) {
+        // Stations, phone files and podcast episodes are not YouTube songs: nothing to download.
+        if (likeStatus == 1 && !com.maxrave.domain.data.radio.RadioStreams.isRadio(videoId) && dataStoreManager.autoDownloadLikedSongs.first() == TRUE) {
             val song = localDataSource.getSong(videoId)
             if (song != null && song.downloadState != DownloadState.STATE_DOWNLOADED) {
                 Logger.d(TAG, "Auto-downloading liked song: $videoId")

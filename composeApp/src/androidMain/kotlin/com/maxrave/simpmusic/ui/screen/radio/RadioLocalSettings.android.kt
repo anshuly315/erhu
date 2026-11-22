@@ -23,12 +23,13 @@ actual fun RadioLocalSettingsGroup() {
     val hidden by store.hidden.collectAsState()
     var nowPlaying by remember { mutableStateOf(store.showNowPlaying) }
     var mixes by remember { mutableStateOf(store.showSmartMixes) }
+    var hiddenFolders by remember { mutableStateOf(org.simpmusic.radio.local.LocalFolders.excluded(context)) }
     fun toast(m: String) = Toast.makeText(context, m, Toast.LENGTH_SHORT).show()
 
     SettingGroup(
         title = "Radio",
         scope = SettingsScope.Radio,
-        footer = { androidx.compose.material3.Text("Pinch any station or song list to change how it looks.") },
+        footer = { androidx.compose.material3.Text("Pinch any list to change how it looks. Stations are kept out of your listening history, Most played and Last.fm.") },
     ) {
         SettingItem(
             title = "Show what's playing",
@@ -49,7 +50,7 @@ actual fun RadioLocalSettingsGroup() {
         )
         SettingItem(
             title = "Reset list layouts",
-            subtitle = "Return radio and local lists to the default pinch level",
+            subtitle = "Stations, songs, albums, artists and playlists back to their default views",
             onClick = { store.resetLayouts(); toast("Layouts reset. Reopen the tab to see it.") },
         )
     }
@@ -72,8 +73,23 @@ actual fun RadioLocalSettingsGroup() {
             onClick = { vybe.deleteModel(); toast("VYBE model deleted") },
         )
         SettingItem(
+            title = "Music folders",
+            subtitle =
+                if (hiddenFolders.isEmpty()) {
+                    "Every folder is shown. Choose folders from the Local tab's Folders button."
+                } else {
+                    "${hiddenFolders.size} folder${if (hiddenFolders.size == 1) "" else "s"} hidden. Tap to show every folder again."
+                },
+            isEnable = hiddenFolders.isNotEmpty(),
+            onClick = {
+                org.simpmusic.radio.local.LocalFolders.setExcluded(context, emptySet())
+                hiddenFolders = emptySet()
+                toast("All music folders shown")
+            },
+        )
+        SettingItem(
             title = "Reset play counts",
-            subtitle = "Clear the counts the smart mixes are built from",
+            subtitle = "Clear the counts behind Most played, Recently played and the smart mixes",
             onClick = { PlayStats(context).clear(); toast("Play counts reset") },
         )
     }

@@ -36,6 +36,11 @@ internal class AnalyticsRepositoryImpl(
         listenedSecond: Long,
     ): Flow<Long> =
         flow {
+            // Stations and podcast episodes stay out of listening history (Analytics, Wrapped, mixes).
+            if (!com.maxrave.domain.data.radio.RadioStreams.isSong(videoId)) {
+                emit(-1L)
+                return@flow
+            }
             emit(
                 analyticsDatasource.insertPlaybackEvent(
                     videoId,

@@ -323,7 +323,9 @@ class SharedViewModel(
                             if (timeline.isLive) return@collectLatest
                             log("Timeline job ${(it.first.total.toString() + it.second.songEntity?.videoId).hashCode()}")
                             if (timeline.total > 0 && nowPlaying.songEntity != null) {
-                                if (nowPlaying.mediaItem.isSong() && nowPlayingScreenData.value.canvasData == null) {
+                                if (nowPlaying.mediaItem.isSong() && nowPlayingScreenData.value.canvasData == null &&
+                                    !com.maxrave.domain.data.radio.RadioStreams.isRadio(nowPlaying.mediaItem.mediaId)
+                                ) {
                                     Logger.w(tag, "Duration is ${timeline.total}")
                                     Logger.w(tag, "MediaId is ${nowPlaying.mediaItem.mediaId}")
                                     getCanvas(nowPlaying.mediaItem.mediaId, (timeline.total / 1000).toInt())
@@ -1203,6 +1205,11 @@ class SharedViewModel(
     }
 
     private fun getFormat(mediaId: String?) {
+        if (com.maxrave.domain.data.radio.RadioStreams.isRadio(mediaId)) {
+            getFormatFlowJob?.cancel()
+            _format.value = null
+            return
+        }
         if (mediaId != _format.value?.videoId && !mediaId.isNullOrEmpty()) {
             _format.value = null
             _extractSource.value = streamRepository.getExtractSource(mediaId)
@@ -1228,6 +1235,11 @@ class SharedViewModel(
 
     fun getSongInfo(mediaId: String?) {
         songInfoJob?.cancel()
+        // Stations, phone files and podcast episodes have no YouTube page to read.
+        if (com.maxrave.domain.data.radio.RadioStreams.isRadio(mediaId)) {
+            _nowPlayingScreenData.update { it.copy(songInfoData = null) }
+            return
+        }
         songInfoJob =
             viewModelScope.launch {
                 if (mediaId != null) {
@@ -1578,6 +1590,8 @@ class SharedViewModel(
         // A live broadcast has nothing to sync lyrics to — the "duration" mpv reports for it is only
         // its seek window — so no provider is asked. Every caller comes through here.
         if (LiveStreamRegistry.isLive(song.videoId)) return
+        // Live stations and podcast episodes have no song lyrics; phone files are looked up by name.
+        if (!com.maxrave.domain.data.radio.RadioStreams.isSong(song.videoId)) return
         // A fetch in flight is not "no lyrics": switching the provider re-fetches the same song, and
         // Add lyrics offered meanwhile could be saved over the lyrics the new provider finds.
         _nowPlayingScreenData.update { it.copy(lyricsNotFound = false) }

@@ -699,7 +699,7 @@ internal class MediaServiceHandlerImpl(
                         updateDiscordRpc(songEntity)
                         // Launched separately: "now playing" is a network round trip, and this job
                         // still has the rest of the track state to publish.
-                        coroutineScope.launch { lastfmScrobbler.onTrackStarted(songEntity) }
+                        coroutineScope.launch { if (com.maxrave.domain.data.radio.RadioStreams.isSong(songEntity.videoId)) lastfmScrobbler.onTrackStarted(songEntity) else lastfmScrobbler.reset() }
                     } else {
                         _controlState.update { it.copy(isLiked = false) }
                         var thumbUrl =
@@ -726,7 +726,7 @@ internal class MediaServiceHandlerImpl(
                         updateDiscordRpc(songEntity)
                         // Launched separately: "now playing" is a network round trip, and this job
                         // still has the rest of the track state to publish.
-                        coroutineScope.launch { lastfmScrobbler.onTrackStarted(songEntity) }
+                        coroutineScope.launch { if (com.maxrave.domain.data.radio.RadioStreams.isSong(songEntity.videoId)) lastfmScrobbler.onTrackStarted(songEntity) else lastfmScrobbler.reset() }
                     }
                 }
                 songEntityJob?.cancel()

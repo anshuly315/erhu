@@ -1,6 +1,9 @@
 package org.simpmusic.radio.local
 
 import android.content.Context
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /** Local play counts and last-played times, kept on the phone to drive the smart mixes. */
 class PlayStats(context: Context) {
@@ -14,6 +17,30 @@ class PlayStats(context: Context) {
 
     fun record(id: Long) {
         prefs.edit().putInt("c$id", count(id) + 1).putLong("t$id", System.currentTimeMillis()).apply()
+    }
+}
+
+/**
+ * Counts every phone song the player starts, whether tapped or reached by the queue moving on,
+ * so Most played, Recently played and the mixes reflect real listening. Started once per process.
+ */
+object LocalPlayRecorder {
+    @Volatile private var started = false
+
+    fun start(context: Context, handler: com.maxrave.domain.mediaservice.handler.MediaPlayerHandler) {
+        if (started) return
+        started = true
+        val stats = PlayStats(context)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default).launch {
+            handler.nowPlaying
+                .map { it?.mediaId }
+                .distinctUntilChanged()
+                .collect { id ->
+                    if (com.maxrave.domain.data.radio.RadioStreams.isPhoneSong(id)) {
+                        id!!.removePrefix(com.maxrave.domain.data.radio.RadioStreams.PREFIX + "local-").toLongOrNull()?.let(stats::record)
+                    }
+                }
+        }
     }
 }
 

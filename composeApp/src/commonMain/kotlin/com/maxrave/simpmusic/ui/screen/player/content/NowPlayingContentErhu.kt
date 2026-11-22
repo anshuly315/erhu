@@ -59,7 +59,15 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.maxrave.domain.mediaservice.handler.RepeatState
+import com.maxrave.common.Config.MAIN_PLAYER
+import com.maxrave.simpmusic.expect.ui.MediaPlayerView
+import com.maxrave.simpmusic.expect.ui.MediaPlayerViewWithSubtitle
+import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
+import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.expect.ui.layerBackdrop
+import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.expect.ui.toImageBitmap
+import com.maxrave.simpmusic.ui.component.liquidGlass
 import com.maxrave.simpmusic.extension.LeftToRight
 import com.maxrave.simpmusic.extension.elapsedLabel
 import com.maxrave.simpmusic.extension.lengthLabel
@@ -108,7 +116,10 @@ fun NowPlayingContentErhu(
     var stacked by remember { mutableStateOf(false) }
     val stack = remember { androidx.compose.animation.core.Animatable(0f) }
     androidx.compose.runtime.LaunchedEffect(stacked) { stack.animateTo(if (stacked) 1f else 0f, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 300f)) }
+    // Glass: the blurred artwork and its scrim are the source the cards and panels refract.
+    val backdrop = rememberBackdrop(Color.Black)
     Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().then(if (glass) Modifier.layerBackdrop(backdrop) else Modifier)) {
         if (glass) {
             AppleMusicArtworkBackdrop(state = state, actions = actions, seedColor = seed)
         }
@@ -123,13 +134,14 @@ fun NowPlayingContentErhu(
                 ),
             ),
         )
+        }
         LeftToRight {
             Column(
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 16.dp),
             ) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     RoundButton(44.dp, colors.content.copy(alpha = 0.14f), onClick = actions.onDismiss) {
-                        Icon(state.dismissIcon, contentDescription = "", tint = colors.content)
+                        Icon(state.dismissIcon, contentDescription = "Close player", tint = colors.content)
                     }
                     Text(
                         text = state.screenData.playlistName,
@@ -141,7 +153,7 @@ fun NowPlayingContentErhu(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                     RoundButton(44.dp, colors.content.copy(alpha = 0.14f), onClick = actions.onShowMoreSheet) {
-                        Icon(SimpIcons.MoreVert, contentDescription = "", tint = colors.content)
+                        Icon(SimpIcons.MoreVert, contentDescription = "More options", tint = colors.content)
                     }
                 }
 
@@ -149,7 +161,7 @@ fun NowPlayingContentErhu(
                     val viewport = maxHeight
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(Modifier.fillMaxWidth().height(viewport - 56.dp)) {
-                            Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) { Carousel(state, actions, glass, colors, stack.value, !stacked) }
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) { Carousel(state, actions, glass, backdrop, colors, stack.value, !stacked) }
 
                             // 0:00 · 7 / 930 · 4:10
                             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -170,26 +182,26 @@ fun NowPlayingContentErhu(
                             )
                             // Five equal columns: shuffle, previous, play / pause, next, repeat.
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Slot { SmallIcon(active = c.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) { Icon(SimpIcons.Shuffle, "", tint = colors.content, modifier = Modifier.size(22.dp)) } }
-                                Slot { RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) { Icon(SimpIcons.SkipPrevious, "", tint = colors.content.copy(alpha = if (c.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp)) } }
-                                Slot { RoundButton(64.dp, colors.accent, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) { Icon(if (c.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow, "", tint = colors.onAccent, modifier = Modifier.size(34.dp)) } }
-                                Slot { RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) { Icon(SimpIcons.SkipNext, "", tint = colors.content.copy(alpha = if (c.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp)) } }
-                                Slot { SmallIcon(active = c.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) { Icon(if (c.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat, "", tint = colors.content, modifier = Modifier.size(22.dp)) } }
+                                Slot { SmallIcon(active = c.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) { Icon(SimpIcons.Shuffle, if (c.isShuffle) "Shuffle on" else "Shuffle off", tint = colors.content, modifier = Modifier.size(22.dp)) } }
+                                Slot { RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) { Icon(SimpIcons.SkipPrevious, "Previous track", tint = colors.content.copy(alpha = if (c.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp)) } }
+                                Slot { RoundButton(64.dp, colors.accent, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) { Icon(if (c.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow, if (c.isPlaying) "Pause" else "Play", tint = colors.onAccent, modifier = Modifier.size(34.dp)) } }
+                                Slot { RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) { Icon(SimpIcons.SkipNext, "Next track", tint = colors.content.copy(alpha = if (c.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp)) } }
+                                Slot { SmallIcon(active = c.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) { Icon(if (c.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat, when (c.repeatState) { is RepeatState.One -> "Repeat one"; is RepeatState.None -> "Repeat off"; else -> "Repeat all" }, tint = colors.content, modifier = Modifier.size(22.dp)) } }
                             }
                             // Add to playlist under shuffle, the stack toggle under play, the queue under repeat.
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Slot { SmallIcon(active = false, onClick = actions.onShowAddToPlaylist) { Icon(SimpIcons.Add, "", tint = colors.content) } }
+                                Slot { SmallIcon(active = false, onClick = actions.onShowAddToPlaylist) { Icon(SimpIcons.Add, "Add to playlist", tint = colors.content) } }
                                 Slot {}
                                 Slot {
                                     SmallIcon(active = false, onClick = { stacked = !stacked }) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Icon(SimpIcons.Layers, "", tint = colors.content, modifier = Modifier.graphicsLayer { alpha = 1f - stack.value })
-                                            Icon(SimpIcons.ViewCarousel, "", tint = colors.content, modifier = Modifier.graphicsLayer { alpha = stack.value })
+                                            Icon(SimpIcons.Layers, if (!stacked) "Stack albums" else null, tint = colors.content, modifier = Modifier.graphicsLayer { alpha = 1f - stack.value })
+                                            Icon(SimpIcons.ViewCarousel, if (stacked) "Spread albums" else null, tint = colors.content, modifier = Modifier.graphicsLayer { alpha = stack.value })
                                         }
                                     }
                                 }
                                 Slot {}
-                                Slot { SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = colors.content) } }
+                                Slot { SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "Queue", tint = colors.content) } }
                             }
                         }
 
@@ -200,6 +212,7 @@ fun NowPlayingContentErhu(
                             Modifier
                                 .fillMaxWidth()
                                 .height((viewport * 0.55f).coerceIn(240.dp, 420.dp))
+                                .then(if (glass) Modifier.liquidGlass(backdrop, RoundedCornerShape(28.dp), interactive = false) else Modifier)
                                 .clip(RoundedCornerShape(28.dp))
                                 .erhuCardSurface(colors, RoundedCornerShape(28.dp), 10_000.dp, glass)
                                 .clickable(onClick = actions.onShowFullscreenLyrics)
@@ -207,7 +220,7 @@ fun NowPlayingContentErhu(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Lyrics", color = colors.content, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                                Icon(SimpIcons.OpenInFull, "", tint = colors.content.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+                                Icon(SimpIcons.OpenInFull, "Open lyrics", tint = colors.content.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
                             }
                             Spacer(Modifier.height(10.dp))
                             if (lines.isEmpty()) {
@@ -243,6 +256,7 @@ private fun Carousel(
     state: NowPlayingContentState,
     actions: NowPlayingContentActions,
     glass: Boolean,
+    backdrop: PlatformBackdrop,
     colors: ErhuColors,
     stack: Float,
     selectable: Boolean,
@@ -291,6 +305,7 @@ private fun Carousel(
                         scaleX = sc
                         scaleY = sc
                     }
+                    .then(if (glass) Modifier.liquidGlass(backdrop, shape, interactive = false) else Modifier)
                     .clip(shape)
                     .erhuCardSurface(colors, shape, artSide + pad * 2, glass)
                     .clickable(enabled = !isCurrent && selectable) { actions.onSeekToQueueIndex(page) },
@@ -337,13 +352,48 @@ private fun Carousel(
                             RoundButton(44.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.ToggleLike) }) {
                                 Icon(
                                     if (state.controllerState.isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
-                                    contentDescription = "",
+                                    contentDescription = if (state.controllerState.isLiked) "Remove from liked" else "Like",
                                     tint = if (state.controllerState.isLiked) colors.accent else colors.content,
                                 )
                             }
                         }
                     }
                 }
+                    // The current card plays what the other styles play in place of the cover: the music
+                    // video (with lyrics as subtitles) or the track's canvas loop. The cover stays under it,
+                    // because its bitmap is what colours the page.
+                    if (isCurrent) {
+                        val canvasVideo = state.screenData.canvasData?.takeIf { it.isVideo }?.url
+                        val showVideo = state.screenData.isVideo && state.shouldShowVideo
+                        if (showVideo || canvasVideo != null) {
+                            Box(
+                                Modifier
+                                    .padding(pad)
+                                    .size(artSide)
+                                    .clip(RoundedCornerShape(28.dp))
+                                    .background(Color.Black),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (showVideo) {
+                                    MediaPlayerViewWithSubtitle(
+                                        playerName = MAIN_PLAYER,
+                                        modifier = Modifier.align(Alignment.Center),
+                                        shouldShowSubtitle = true,
+                                        shouldPip = false,
+                                        shouldScaleDownSubtitle = true,
+                                        timelineState = state.timelineState,
+                                        lyricsData = state.screenData.lyricsData?.lyrics,
+                                        translatedLyricsData = state.screenData.lyricsData?.translatedLyrics?.first,
+                                        isInPipMode = state.isInPipMode,
+                                        mainTextStyle = typo().bodyLarge,
+                                        translatedTextStyle = typo().bodyMedium,
+                                    )
+                                } else if (canvasVideo != null) {
+                                    MediaPlayerView(url = canvasVideo, modifier = Modifier.fillMaxSize(), cropToBounds = true)
+                                }
+                            }
+                        }
+                    }
                 if (offset > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f * offset)))
             }
         }
@@ -358,7 +408,8 @@ private fun Modifier.erhuCardSurface(
     glass: Boolean,
 ): Modifier =
     drawWithCache {
-        val bodyAlpha = if (glass) 0.6f else 1f
+        // Over real glass the tint stays light so the frost shows; behind the text it is still readable.
+        val bodyAlpha = if (glass) 0.45f else 1f
         val body = Brush.linearGradient(colors.card.map { it.copy(alpha = it.alpha * bodyAlpha) }, start = Offset.Zero, end = Offset(size.width, size.height))
         val top = infoTop.toPx()
         val light = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.Transparent), startY = 0f, endY = 22.dp.toPx())

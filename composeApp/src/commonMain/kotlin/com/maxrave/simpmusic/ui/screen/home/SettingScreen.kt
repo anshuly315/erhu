@@ -1532,8 +1532,9 @@ fun SettingScreen(
                 }
             }
         }
-        item(key = "playback") {
-            SettingGroup(title = stringResource(Res.string.playback)) {
+        item(key = "sound_effects") {
+            // Every sound-shaping effect in one place, for YouTube, radio and phone files alike.
+            SettingGroup(title = "Sound effects") {
                 // Under Playback rather than Audio because that whole group sits inside an
                 // Android-only branch — "Open system equalizer" is an Android feature — and this
                 // one is on both platforms: mpv's `af` chain on Desktop, an AudioProcessor in the
@@ -1595,6 +1596,10 @@ fun SettingScreen(
                 AnimatedVisibility(visible = eightDEnabled && eightDAvailable && !castState.isRemote) {
                     EightDSection()
                 }
+            }
+        }
+        item(key = "playback") {
+            SettingGroup(title = stringResource(Res.string.playback)) {
                 SettingItem(
                     title = stringResource(Res.string.save_playback_state),
                     subtitle = stringResource(Res.string.save_shuffle_and_repeat_mode),
@@ -2183,7 +2188,7 @@ fun SettingScreen(
             }
         }
         item(key = "discord") {
-            SettingGroup(title = stringResource(Res.string.discord_integration), scope = SettingsScope.YouTube) {
+            SettingGroup(title = stringResource(Res.string.discord_integration)) {
                 SettingItem(
                     title =
                         if (discordLoggedIn) {
@@ -2219,7 +2224,7 @@ fun SettingScreen(
         // build whose local.properties has no key.
         if (viewModel.lastfmAvailable) {
             item(key = "lastfm") {
-                SettingGroup(title = stringResource(Res.string.lastfm_integration), scope = SettingsScope.YouTube) {
+                SettingGroup(title = stringResource(Res.string.lastfm_integration)) {
                     SettingItem(
                         title =
                             if (lastfmLoggedIn) {

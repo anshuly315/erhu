@@ -17,6 +17,15 @@ object RadioStreams {
     /** Files from the phone are queued as "radio:local-<id>" so they share the direct-URI path, but they are not live. */
     fun isLocal(mediaId: String?): Boolean = mediaId != null && mediaId.startsWith(PREFIX + "local-")
 
+    /** Podcast episodes are queued as "radio:local-pod-<hash>": files, not live, but not music either. */
+    fun isPodcast(mediaId: String?): Boolean = mediaId != null && mediaId.startsWith(PREFIX + "local-pod-")
+
+    /** A phone music file (not a station, not a podcast episode). */
+    fun isPhoneSong(mediaId: String?): Boolean = isLocal(mediaId) && !isPodcast(mediaId)
+
+    /** A real song: a YouTube track or a phone music file. Stations and episodes are not. */
+    fun isSong(mediaId: String?): Boolean = !isRadio(mediaId) || isPhoneSong(mediaId)
+
     fun idFor(stationUuid: String): String = PREFIX + stationUuid
 
     fun register(radioId: String, streamUrl: String) {

@@ -64,24 +64,47 @@ import org.simpmusic.radio.local.LocalMusic
 import org.simpmusic.radio.local.LocalPlayer
 import org.simpmusic.radio.local.LocalSong
 
-internal val Bg = Color(0xFF0E1110)
-internal val Surface = Color(0xFF1D2220)
-internal val Mint = Color(0xFFA9E5C0)
-internal val OnMint = Color(0xFF0B2A1A)
-internal val Muted = Color(0xFF9BA6A0)
-internal val Ink = Color(0xFFF2F5F3)
+/** The app theme's colours and glass switch, handed in by the tab host so Radio and Local follow Settings. */
+@androidx.compose.runtime.Immutable
+data class RadioTheme(
+    val bg: Color = Color(0xFF0E1110),
+    val surface: Color = Color(0xFF1D2220),
+    val accent: Color = Color(0xFFA9E5C0),
+    val onAccent: Color = Color(0xFF0B2A1A),
+    val muted: Color = Color(0xFF9BA6A0),
+    val ink: Color = Color(0xFFF2F5F3),
+    val dark: Boolean = true,
+    val glass: Boolean = true,
+)
+
+val LocalRadioTheme = androidx.compose.runtime.staticCompositionLocalOf { RadioTheme() }
+
+internal val Bg: Color @androidx.compose.runtime.Composable get() = LocalRadioTheme.current.bg
+internal val Surface: Color @androidx.compose.runtime.Composable get() = LocalRadioTheme.current.surface
+internal val Mint: Color @androidx.compose.runtime.Composable get() = LocalRadioTheme.current.accent
+internal val OnMint: Color @androidx.compose.runtime.Composable get() = LocalRadioTheme.current.onAccent
+internal val Muted: Color @androidx.compose.runtime.Composable get() = LocalRadioTheme.current.muted
+internal val Ink: Color @androidx.compose.runtime.Composable get() = LocalRadioTheme.current.ink
+
+/** A faint wash of the text colour: unselected chips and pills, readable in either theme. */
+internal val Wash: Color @androidx.compose.runtime.Composable get() = Ink.copy(alpha = 0.08f)
 
 /** The backdrop the glass panels of Radio and Local refract (the ambient page background). */
 internal val LocalGlassSource = androidx.compose.runtime.compositionLocalOf<com.kyant.backdrop.backdrops.LayerBackdrop?> { null }
 
-/** Liquid glass like the SimpMusic pages: blur, vibrancy and lens over the backdrop; a flat frost when none is provided. */
+/**
+ * Liquid glass like the SimpMusic pages: blur, vibrancy and lens over the page backdrop, with a rim
+ * light. Follows the Liquid glass setting: off, or with no backdrop, it is a flat translucent pill.
+ */
 @androidx.compose.runtime.Composable
 internal fun Modifier.glass(shape: androidx.compose.ui.graphics.Shape): Modifier {
+    val theme = LocalRadioTheme.current
     val backdrop = LocalGlassSource.current
-    val rim = androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x66FFFFFF), Color(0x14FFFFFF)))
-    if (backdrop == null) {
+    val edge = if (theme.dark) Color.White else Color.Black
+    val rim = androidx.compose.ui.graphics.Brush.verticalGradient(listOf(edge.copy(alpha = if (theme.dark) 0.4f else 0.18f), edge.copy(alpha = 0.06f)))
+    if (backdrop == null || !theme.glass) {
         return this.clip(shape)
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x2EFFFFFF), Color(0x12FFFFFF))))
+            .background(theme.surface.copy(alpha = 0.8f))
             .border(1.dp, rim, shape)
     }
     return this.drawBackdrop(
@@ -93,7 +116,7 @@ internal fun Modifier.glass(shape: androidx.compose.ui.graphics.Shape): Modifier
             lens(12f.dp.toPx(), size.minDimension / 2f, true)
         },
         shape = { shape },
-        onDrawSurface = { drawRect(Color.White.copy(alpha = 0.08f)) },
+        onDrawSurface = { drawRect(if (theme.dark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.35f)) },
     ).border(1.dp, rim, shape)
 }
 
@@ -107,13 +130,18 @@ internal fun GlassPage(modifier: Modifier = Modifier, content: @androidx.compose
     }
 }
 
-/** The page backdrop: dark base with soft coloured glows so the glass has something to frost. */
-internal fun Modifier.ambientBackdrop(): Modifier =
-    this.background(Bg).background(
-        androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0x3350C8A0), Color.Transparent), center = androidx.compose.ui.geometry.Offset(150f, 250f), radius = 900f),
+/** The page backdrop: the theme background with two soft glows of the accent, so the glass has something to frost. */
+@androidx.compose.runtime.Composable
+internal fun Modifier.ambientBackdrop(): Modifier {
+    val t = LocalRadioTheme.current
+    val glowA = t.accent.copy(alpha = if (t.dark) 0.2f else 0.28f)
+    val glowB = androidx.compose.ui.graphics.lerp(t.accent, Color(0xFF607CFF), 0.6f).copy(alpha = if (t.dark) 0.2f else 0.24f)
+    return this.background(t.bg).background(
+        androidx.compose.ui.graphics.Brush.radialGradient(listOf(glowA, Color.Transparent), center = androidx.compose.ui.geometry.Offset(150f, 250f), radius = 900f),
     ).background(
-        androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0x33607CFF), Color.Transparent), center = androidx.compose.ui.geometry.Offset(1000f, 1500f), radius = 1100f),
+        androidx.compose.ui.graphics.Brush.radialGradient(listOf(glowB, Color.Transparent), center = androidx.compose.ui.geometry.Offset(1000f, 1500f), radius = 1100f),
     )
+}
 
 
 private enum class StationSort(val label: String) {
@@ -181,7 +209,6 @@ private sealed interface Page {
     data class Stations(val title: String, val load: suspend () -> List<RadioStation>) : Page
     data class Facets(val title: String, val kind: String) : Page
     data object Favourites : Page
-    data object Local : Page
     data object Near : Page
     data object Podcasts : Page
 }
@@ -212,7 +239,6 @@ fun RadioScreen(
             is Page.Stations -> StationListPage(page.title, page.load, api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
             is Page.Facets -> FacetPage(page.title, page.kind, api, bottomPadding, { stack.removeAt(stack.lastIndex) }) { stack.add(it) }
             Page.Favourites -> FavouritesPage(api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
-            Page.Local -> LocalMusicPage(localPlayer, bottomPadding) { stack.removeAt(stack.lastIndex) }
             Page.Near -> NearMePage(api, store, player, modeState, bottomPadding) { stack.removeAt(stack.lastIndex) }
             Page.Podcasts -> PodcastsPage(player, bottomPadding) { stack.removeAt(stack.lastIndex) }
         }
@@ -473,7 +499,7 @@ internal fun Chip(
 ) {
     Box(
         Modifier.clip(RoundedCornerShape(50)).background(if (selected) Mint else Color.Transparent)
-            .then(if (selected) Modifier else Modifier.background(Color(0x14FFFFFF)))
+            .then(if (selected) Modifier else Modifier.background(Wash))
             .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp),
     ) {
         Text(text, color = if (selected) OnMint else Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -555,7 +581,22 @@ private fun LocalMusicPage(
     var scanned by remember { mutableStateOf<List<LocalSong>?>(null) }
     var excluded by remember { mutableStateOf(org.simpmusic.radio.local.LocalFolders.excluded(context)) }
     var foldersOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(granted) { if (granted) scanned = LocalMusic.scan(context) }
+    // Rescans when MediaStore changes (a download finishes, a file is deleted elsewhere), a second
+    // after the last change so a burst of edits costs one scan.
+    var mediaVersion by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.DisposableEffect(granted) {
+        val observer =
+            object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) { mediaVersion++ }
+            }
+        if (granted) context.contentResolver.registerContentObserver(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, observer)
+        onDispose { context.contentResolver.unregisterContentObserver(observer) }
+    }
+    LaunchedEffect(granted, mediaVersion) {
+        if (!granted) return@LaunchedEffect
+        if (mediaVersion > 0) kotlinx.coroutines.delay(1_000)
+        scanned = LocalMusic.scan(context)
+    }
     LaunchedEffect(scanned, excluded) { songs = scanned?.filter { it.folder !in excluded } }
     var showVybe by remember { mutableStateOf(false) }
     val loadedSongs = songs

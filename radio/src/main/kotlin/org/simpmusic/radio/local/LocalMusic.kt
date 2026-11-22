@@ -118,13 +118,23 @@ class LocalPlayer(
     private val context: Context,
     private val handler: MediaPlayerHandler,
 ) {
+    init {
+        LocalPlayRecorder.start(context, handler)
+    }
+
+    /** Takes deleted files out of the queue, from the end so earlier positions stay valid. */
+    fun removeFromQueue(ids: Set<Long>) {
+        val gone = ids.map { RadioStreams.PREFIX + "local-" + it }.toSet()
+        val tracks = handler.queueData.value?.data?.listTracks ?: return
+        tracks.indices.reversed().filter { tracks[it].videoId in gone }.forEach { handler.removeMediaItem(it) }
+    }
+
     suspend fun play(
         songs: List<LocalSong>,
         index: Int,
         queueName: String = "My music",
     ) {
         val chosen = songs.getOrNull(index) ?: return
-        PlayStats(context).record(chosen.id)
         songs.forEach { RadioStreams.register(it.trackId, it.uri) }
         val tracks = songs.map { it.toTrack(FallbackArt.uriFor(context, it.id.toString())) }
         org.simpmusic.radio.data.RadioNow.station.value = null

@@ -14,6 +14,11 @@ object RadioAuto {
         val app = context.applicationContext
         val store = RadioStore(app)
         val api = RadioBrowserApi()
+        // Saved stations get their stream URLs back at once, so a queue restored after a restart
+        // plays from the mini player before the Radio tab was ever opened.
+        com.maxrave.domain.data.radio.RadioStreams.registerAll(
+            (store.favourites.value + store.history.value).associate { com.maxrave.domain.data.radio.RadioStreams.idFor(it.uuid) to it.streamUrl },
+        )
 
         fun RadioStation.item() = RadioItem(uuid, name, subtitle, favicon.takeIf { it.startsWith("http") } ?: FallbackArt.uriFor(app, uuid, tags, language), streamUrl)
         RadioBrowse.provider =
