@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -63,7 +67,8 @@ import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.ui.icon.Favorite
 import com.maxrave.simpmusic.ui.icon.FavoriteBorder
 import com.maxrave.simpmusic.ui.icon.Add
-import com.maxrave.simpmusic.ui.icon.LibraryMusic
+import com.maxrave.simpmusic.ui.icon.Layers
+import com.maxrave.simpmusic.ui.icon.ViewCarousel
 import com.maxrave.simpmusic.ui.icon.OpenInFull
 import com.maxrave.simpmusic.ui.icon.MoreVert
 import com.maxrave.simpmusic.ui.icon.Pause
@@ -100,6 +105,9 @@ fun NowPlayingContentErhu(
     val seed = state.startColor.value
     val colors = rememberErhuColors(state.screenData.bitmap, seed)
     val c = state.controllerState
+    var stacked by remember { mutableStateOf(false) }
+    val stack = remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(stacked) { stack.animateTo(if (stacked) 1f else 0f, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 300f)) }
     val lyricLine =
         state.screenData.lyricsData
             ?.lyrics
@@ -147,74 +155,96 @@ fun NowPlayingContentErhu(
                     }
                 }
 
-                Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 10.dp)) { Carousel(state, actions, glass, colors) }
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                    val viewport = maxHeight
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        Column(Modifier.fillMaxWidth().height(viewport - 56.dp)) {
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) { Carousel(state, actions, glass, colors, stack.value, !stacked) }
 
-                // 0:00 · 7 / 930 · 4:10
-                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(state.timelineState.elapsedLabel(state.sliderValue / 100f), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    if (state.artworkQueue.isNotEmpty()) {
-                        Text("${state.currentOrderIndex + 1} / ${state.artworkQueue.size}", color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text(state.timelineState.lengthLabel(), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                }
-                WavySeekBar(
-                    progressFraction = state.sliderValue / 100f,
-                    isPlaying = c.isPlaying,
-                    activeColor = colors.accent,
-                    trackColor = colors.content.copy(alpha = 0.22f),
-                    thumbColor = colors.accent,
-                    onSliderChange = actions.onSliderChange,
-                    onSliderChangeFinished = actions.onSliderChangeFinished,
-                )
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SmallIcon(active = c.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) {
-                        Icon(SimpIcons.Shuffle, "", tint = colors.content, modifier = Modifier.size(22.dp))
-                    }
-                    RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) {
-                        Icon(SimpIcons.SkipPrevious, "", tint = colors.content.copy(alpha = if (c.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
-                    }
-                    RoundButton(68.dp, colors.accent, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) {
-                        Icon(if (c.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow, "", tint = colors.onAccent, modifier = Modifier.size(34.dp))
-                    }
-                    RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) {
-                        Icon(SimpIcons.SkipNext, "", tint = colors.content.copy(alpha = if (c.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
-                    }
-                    SmallIcon(active = c.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) {
-                        Icon(if (c.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat, "", tint = colors.content, modifier = Modifier.size(22.dp))
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    SmallIcon(active = false, onClick = actions.onShowAddToPlaylist) { Icon(SimpIcons.Add, "", tint = colors.content) }
-                    SmallIcon(active = false, onClick = actions.onShowInfo) { Icon(SimpIcons.LibraryMusic, "", tint = colors.content) }
-                    SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = colors.content) }
-                }
-
-                // Lyrics card, tap to open the full page
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp, bottom = 12.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.linearGradient(colors.card.map { it.copy(alpha = if (glass) 0.7f else 0.92f) }))
-                        .clickable(onClick = actions.onShowFullscreenLyrics)
-                        .padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Lyrics", color = colors.content, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        if (lyricLine.isNotBlank()) {
-                            Text(lyricLine, color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            // 0:00 · 7 / 930 · 4:10
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(state.timelineState.elapsedLabel(state.sliderValue / 100f), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                if (state.artworkQueue.isNotEmpty()) {
+                                    Text("${state.currentOrderIndex + 1} / ${state.artworkQueue.size}", color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
+                                }
+                                Text(state.timelineState.lengthLabel(), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            }
+                            WavySeekBar(
+                                progressFraction = state.sliderValue / 100f,
+                                isPlaying = c.isPlaying,
+                                activeColor = colors.accent,
+                                trackColor = colors.content.copy(alpha = 0.22f),
+                                thumbColor = colors.accent,
+                                onSliderChange = actions.onSliderChange,
+                                onSliderChangeFinished = actions.onSliderChangeFinished,
+                            )
+                            // Five equal columns: shuffle, previous, play / pause, next, repeat.
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Slot { SmallIcon(active = c.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) { Icon(SimpIcons.Shuffle, "", tint = colors.content, modifier = Modifier.size(22.dp)) } }
+                                Slot { RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) { Icon(SimpIcons.SkipPrevious, "", tint = colors.content.copy(alpha = if (c.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp)) } }
+                                Slot { RoundButton(64.dp, colors.accent, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) { Icon(if (c.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow, "", tint = colors.onAccent, modifier = Modifier.size(34.dp)) } }
+                                Slot { RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) { Icon(SimpIcons.SkipNext, "", tint = colors.content.copy(alpha = if (c.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp)) } }
+                                Slot { SmallIcon(active = c.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) { Icon(if (c.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat, "", tint = colors.content, modifier = Modifier.size(22.dp)) } }
+                            }
+                            // Add to playlist under shuffle, the stack toggle under play, the queue under repeat.
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Slot { SmallIcon(active = false, onClick = actions.onShowAddToPlaylist) { Icon(SimpIcons.Add, "", tint = colors.content) } }
+                                Slot {}
+                                Slot {
+                                    SmallIcon(active = false, onClick = { stacked = !stacked }) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(SimpIcons.Layers, "", tint = colors.content, modifier = Modifier.graphicsLayer { alpha = 1f - stack.value })
+                                            Icon(SimpIcons.ViewCarousel, "", tint = colors.content, modifier = Modifier.graphicsLayer { alpha = stack.value })
+                                        }
+                                    }
+                                }
+                                Slot {}
+                                Slot { SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = colors.content) } }
+                            }
                         }
+
+                        // Lyrics panel: several lines, the current one lit; tap opens the full page.
+                        val lines = state.screenData.lyricsData?.lyrics?.lines.orEmpty()
+                        val cur = state.currentLyricLineIndex.coerceAtLeast(0)
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .height((viewport * 0.55f).coerceIn(240.dp, 420.dp))
+                                .clip(RoundedCornerShape(28.dp))
+                                .erhuCardSurface(colors, RoundedCornerShape(28.dp), 10_000.dp, glass)
+                                .clickable(onClick = actions.onShowFullscreenLyrics)
+                                .padding(18.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Lyrics", color = colors.content, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                Icon(SimpIcons.OpenInFull, "", tint = colors.content.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            if (lines.isEmpty()) {
+                                Text("No lyrics yet", color = colors.content.copy(alpha = 0.6f), style = MaterialTheme.typography.titleMedium)
+                            } else {
+                                lines.drop(cur).take(8).forEachIndexed { i, l ->
+                                    Text(
+                                        l.words.replace(LyricMarker, "").trim().ifBlank { "♪" },
+                                        color = colors.content.copy(alpha = if (i == 0) 1f else 0.55f),
+                                        fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Medium,
+                                        style = if (i == 0) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(24.dp))
                     }
-                    Icon(SimpIcons.OpenInFull, "", tint = colors.content.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
                 }
             }
         }
     }
+}
+
+@Composable
+private fun RowScope.Slot(content: @Composable () -> Unit) {
+    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { content() }
 }
 
 /** erhu's carousel card: artwork square plus the metadata beneath it on one gradient card; dimmed neighbours tap to select. */
@@ -224,6 +254,8 @@ private fun Carousel(
     actions: NowPlayingContentActions,
     glass: Boolean,
     colors: ErhuColors,
+    stack: Float,
+    selectable: Boolean,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val pad = 10.dp
@@ -244,7 +276,8 @@ private fun Carousel(
             key = { idx -> "erhu_${state.artworkQueue.getOrNull(idx)?.videoId.orEmpty()}_$idx" },
             modifier = Modifier.fillMaxSize(),
         ) { page ->
-            val offset = ((state.artworkPagerState.currentPage - page) + state.artworkPagerState.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
+            val signed = (page - state.artworkPagerState.currentPage) - state.artworkPagerState.currentPageOffsetFraction
+            val offset = signed.absoluteValue.coerceIn(0f, 1f)
             val isCurrent = page == state.artworkPagerState.currentPage
             val track = state.artworkQueue.getOrNull(page)
             var url by remember(page, state.screenData.thumbnailURL, track?.videoId) {
@@ -259,9 +292,18 @@ private fun Carousel(
                 Modifier
                     .height(cardH)
                     .fillMaxWidth()
+                    .zIndex(if (page == state.artworkPagerState.currentPage) 1f else 0f)
+                    .graphicsLayer {
+                        // Stacked: the neighbours slide in behind the current card, a little smaller.
+                        val pull = stack * offset.coerceAtMost(1f)
+                        translationX = -signed.coerceIn(-1f, 1f) * pull * (cardW.toPx() + 12.dp.toPx()) * 0.92f
+                        val sc = 1f - 0.08f * pull
+                        scaleX = sc
+                        scaleY = sc
+                    }
                     .clip(shape)
                     .erhuCardSurface(colors, shape, artSide + pad * 2, glass)
-                    .clickable(enabled = !isCurrent) { actions.onSeekToQueueIndex(page) },
+                    .clickable(enabled = !isCurrent && selectable) { actions.onSeekToQueueIndex(page) },
             ) {
                 Column(Modifier.fillMaxSize().padding(pad)) {
                     AsyncImage(
