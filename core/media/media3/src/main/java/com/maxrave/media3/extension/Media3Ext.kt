@@ -249,7 +249,15 @@ internal fun Cache.isFullyCached(
 /** A radio station: the URI is the live stream itself and nothing is cached (the stream never ends). */
 @androidx.annotation.OptIn(UnstableApi::class)
 private fun Track.toRadioMediaItem(): MediaItem {
-    val url = RadioStreams.urlFor(this.videoId) ?: this.videoId
+    // The registry lives in memory, so a queue restored after a restart has no URL for phone files:
+    // a "radio:local-<id>" id is the MediaStore id, which is enough to rebuild the content URI.
+    val url =
+        RadioStreams.urlFor(this.videoId)
+            ?: this.videoId
+                .removePrefix(RadioStreams.PREFIX + "local-")
+                .toLongOrNull()
+                ?.let { "content://media/external/audio/media/$it" }
+            ?: this.videoId
     return MediaItem
         .Builder()
         .setMediaId(this.videoId)

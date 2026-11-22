@@ -108,16 +108,6 @@ fun NowPlayingContentErhu(
     var stacked by remember { mutableStateOf(false) }
     val stack = remember { androidx.compose.animation.core.Animatable(0f) }
     androidx.compose.runtime.LaunchedEffect(stacked) { stack.animateTo(if (stacked) 1f else 0f, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 300f)) }
-    val lyricLine =
-        state.screenData.lyricsData
-            ?.lyrics
-            ?.lines
-            ?.getOrNull(state.currentLyricLineIndex)
-            ?.words
-            ?.replace(LyricMarker, "")
-            ?.trim()
-            .orEmpty()
-
     Box(Modifier.fillMaxSize()) {
         if (glass) {
             AppleMusicArtworkBackdrop(state = state, actions = actions, seedColor = seed)

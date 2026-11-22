@@ -44,7 +44,17 @@ internal fun ProvideLocalDeleter(library: LocalLibrary, onDeleted: (Set<Long>) -
     }
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
-        if (r.resultCode == Activity.RESULT_OK) finish(inFlight) else inFlight = emptyList()
+        if (r.resultCode != Activity.RESULT_OK) {
+            inFlight = emptyList()
+        } else if (Build.VERSION.SDK_INT >= 30) {
+            finish(inFlight)
+        } else {
+            // Android 10 granted access to one file: delete what is left now that we may.
+            val gone = inFlight.filter { s ->
+                runCatching { context.contentResolver.delete(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, s.id), null, null) > 0 }.getOrDefault(false)
+            }
+            if (gone.isNotEmpty()) finish(gone) else inFlight = emptyList()
+        }
     }
 
     fun run(songs: List<LocalSong>) {

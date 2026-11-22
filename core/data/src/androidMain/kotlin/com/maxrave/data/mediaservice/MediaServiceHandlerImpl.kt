@@ -1431,6 +1431,9 @@ internal class MediaServiceHandlerImpl(
 
     override fun loadMore() {
         if (queueData.value.queueState == QueueData.StateSource.STATE_INITIALIZING) return
+        // Radio stations, phone files and podcast episodes have no YouTube radio to continue into:
+        // Endless queue would ask YouTube for "RDAMVMradio:..." and append nothing useful.
+        if (com.maxrave.domain.data.radio.RadioStreams.isRadio(_queueData.value.data.listTracks.lastOrNull()?.videoId)) return
         // Separate local and remote data
         // Local Add Prefix to PlaylistID to differentiate between local and remote
         // Local: LC-PlaylistID
