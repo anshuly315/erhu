@@ -112,8 +112,8 @@ internal fun <T> PinchCollection(
                     val ev = awaitPointerEvent(PointerEventPass.Initial)
                     if (ev.changes.size >= 2) {
                         zoom *= ev.calculateZoom()
-                        if (zoom < 0.8f && level.intValue < LEVEL_MAX) { onLevel(level.intValue + 1); zoom = 1f }
-                        else if (zoom > 1.25f && level.intValue > 0) { onLevel(level.intValue - 1); zoom = 1f }
+                        if (zoom < 0.8f && level.intValue > 0) { onLevel(level.intValue - 1); zoom = 1f }
+                        else if (zoom > 1.25f && level.intValue < LEVEL_MAX) { onLevel(level.intValue + 1); zoom = 1f }
                     }
                 } while (ev.changes.any { it.pressed })
             }

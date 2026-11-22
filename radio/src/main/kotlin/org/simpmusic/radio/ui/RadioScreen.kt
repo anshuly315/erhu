@@ -552,6 +552,7 @@ private fun LocalMusicPage(
             player = player,
             bottomPadding = bottomPadding,
             onVybe = { showVybe = true },
+            onDeleted = { ids -> scanned = scanned?.filterNot { it.id in ids } },
             sortLabel = sort.label,
             sorter = { list ->
                 when (sort) {

@@ -29,6 +29,14 @@ class LocalLibrary private constructor(context: Context) {
         prefs.edit().putString("favs", JSONArray(_favourites.value.toList()).toString()).apply()
     }
 
+    /** Drops songs whose files are gone from favourites and every playlist. */
+    fun forget(ids: Set<Long>) {
+        if (ids.isEmpty()) return
+        _favourites.value = _favourites.value - ids
+        prefs.edit().putString("favs", JSONArray(_favourites.value.toList()).toString()).apply()
+        saveAll(_playlists.value.map { it.copy(songIds = it.songIds.filterNot { id -> id in ids }) })
+    }
+
     fun createPlaylist(name: String, songIds: List<Long> = emptyList()): LocalPlaylist {
         val p = LocalPlaylist(java.util.UUID.randomUUID().toString(), name.trim().ifBlank { "New playlist" }, songIds.distinct(), System.currentTimeMillis())
         saveAll(_playlists.value + p)

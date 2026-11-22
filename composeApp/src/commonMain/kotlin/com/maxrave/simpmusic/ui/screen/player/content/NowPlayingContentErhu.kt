@@ -56,7 +56,9 @@ import com.maxrave.simpmusic.extension.lengthLabel
 import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.ui.icon.Favorite
 import com.maxrave.simpmusic.ui.icon.FavoriteBorder
-import com.maxrave.simpmusic.ui.icon.Lyrics
+import com.maxrave.simpmusic.ui.icon.Add
+import com.maxrave.simpmusic.ui.icon.LibraryMusic
+import com.maxrave.simpmusic.ui.icon.OpenInFull
 import com.maxrave.simpmusic.ui.icon.MoreVert
 import com.maxrave.simpmusic.ui.icon.Pause
 import com.maxrave.simpmusic.ui.icon.PlayArrow
@@ -71,13 +73,17 @@ import com.maxrave.simpmusic.ui.screen.player.content.expressive.WavySeekBar
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlin.math.absoluteValue
 
+private val Pink = Color(0xFFFF4F8B)
+private val LyricMarker = Regex("<\\d+:\\d+(\\.\\d+)?>")
+
 /**
- * The erhu player. Three cards in a row (previous | current | next) that swipe like the erhu app's
- * track carousel, a wavy progress line, a round white play button and a translucent card under it.
+ * The erhu player, after the original erhu app's Now Playing: one big rounded card per track with
+ * a translucent info panel inside it, neighbours peeking in from both sides, an artwork-tinted
+ * gradient behind, then time / queue position, seek line, transport with a round pink play button,
+ * a small action row and a Lyrics card at the bottom. The swipe is the shell's artwork pager.
  *
- * [glass] = false is "Cards": the page is the artwork's own gradient. [glass] = true is "Carousel
- * glass": the same carousel over the blurred artwork, with glass cards. The swipe is the shell's
- * artwork pager, so a swipe skips the track exactly as the other styles do.
+ * [glass] = false: the page is the artwork's own gradient. [glass] = true: the blurred artwork
+ * under the same layout, with glass panels.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -87,33 +93,37 @@ fun NowPlayingContentErhu(
     glass: Boolean,
 ) {
     val seed = state.startColor.value
-    // Shuffle, repeat, lyrics and queue fold away; long-press the ⋮ (or tap the arrow) to show them.
-    var extras by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-    val cardFill = if (glass) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.28f)
-    val cardBorder = if (glass) BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)) else null
+    val c = state.controllerState
+    val lyricLine =
+        state.screenData.lyricsData
+            ?.lyrics
+            ?.lines
+            ?.getOrNull(state.currentLyricLineIndex)
+            ?.words
+            ?.replace(LyricMarker, "")
+            ?.trim()
+            .orEmpty()
 
     Box(Modifier.fillMaxSize()) {
         if (glass) {
             AppleMusicArtworkBackdrop(state = state, actions = actions, seedColor = seed)
-        } else {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(listOf(state.startColor.value, state.endColor.value, PlayerBackdropColor))),
-            )
         }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    if (glass) {
+                        listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.55f), Color.Black.copy(alpha = 0.9f))
+                    } else {
+                        listOf(seed, state.endColor.value.copy(alpha = 0.85f), Color(0xFF0B0B0F))
+                    },
+                ),
+            ),
+        )
         LeftToRight {
             Column(
-                Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(horizontal = 20.dp),
+                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 16.dp),
             ) {
-                // Header: close, source label, more
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     RoundButton(44.dp, Color.White.copy(alpha = 0.14f), onClick = actions.onDismiss) {
                         Icon(state.dismissIcon, contentDescription = "", tint = Color.White)
                     }
@@ -126,135 +136,101 @@ fun NowPlayingContentErhu(
                         style = MaterialTheme.typography.labelLarge,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
-                    Box(
-                        Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.14f))
-                            .combinedClickable(onClick = actions.onShowMoreSheet, onLongClick = { extras = !extras }),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    RoundButton(44.dp, Color.White.copy(alpha = 0.14f), onClick = actions.onShowMoreSheet) {
                         Icon(SimpIcons.MoreVert, contentDescription = "", tint = Color.White)
                     }
                 }
 
-                Spacer(Modifier.height(20.dp))
-                Carousel(state, actions)
-                Spacer(Modifier.height(20.dp))
+                Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 10.dp)) { Carousel(state, actions, glass) }
 
-                // The translucent card under the carousel
-                Column(
+                // 0:00 · 7 / 930 · 4:10
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(state.timelineState.elapsedLabel(state.sliderValue / 100f), color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    if (state.artworkQueue.isNotEmpty()) {
+                        Text("${state.currentOrderIndex + 1} / ${state.artworkQueue.size}", color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text(state.timelineState.lengthLabel(), color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                }
+                WavySeekBar(
+                    progressFraction = state.sliderValue / 100f,
+                    isPlaying = c.isPlaying,
+                    activeColor = Pink,
+                    trackColor = Color.White.copy(alpha = 0.22f),
+                    thumbColor = Pink,
+                    onSliderChange = actions.onSliderChange,
+                    onSliderChangeFinished = actions.onSliderChangeFinished,
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SmallIcon(active = c.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) {
+                        Icon(SimpIcons.Shuffle, "", tint = Color.White, modifier = Modifier.size(22.dp))
+                    }
+                    RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) {
+                        Icon(SimpIcons.SkipPrevious, "", tint = Color.White.copy(alpha = if (c.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
+                    }
+                    RoundButton(68.dp, Pink, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) {
+                        Icon(if (c.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow, "", tint = Color.White, modifier = Modifier.size(34.dp))
+                    }
+                    RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) {
+                        Icon(SimpIcons.SkipNext, "", tint = Color.White.copy(alpha = if (c.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
+                    }
+                    SmallIcon(active = c.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) {
+                        Icon(if (c.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat, "", tint = Color.White, modifier = Modifier.size(22.dp))
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    SmallIcon(active = false, onClick = actions.onShowAddToPlaylist) { Icon(SimpIcons.Add, "", tint = Color.White) }
+                    SmallIcon(active = false, onClick = actions.onShowInfo) { Icon(SimpIcons.LibraryMusic, "", tint = Color.White) }
+                    SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = Color.White) }
+                }
+
+                // Lyrics card, tap to open the full page
+                Row(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(cardFill)
-                        .then(if (cardBorder != null) Modifier.border(cardBorder, RoundedCornerShape(28.dp)) else Modifier)
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(top = 4.dp, bottom = 12.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (glass) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.35f))
+                        .clickable(onClick = actions.onShowFullscreenLyrics)
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                state.screenData.nowPlayingTitle,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                state.screenData.artistName,
-                                color = Color.White.copy(alpha = 0.7f),
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.clickable { actions.onNavigateToArtist() },
-                            )
-                        }
-                        RoundButton(44.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.ToggleLike) }) {
-                            Icon(
-                                if (state.controllerState.isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
-                                contentDescription = "",
-                                tint = if (state.controllerState.isLiked) Color(0xFFFF5A7A) else Color.White,
-                            )
+                    Column(Modifier.weight(1f)) {
+                        Text("Lyrics", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        if (lyricLine.isNotBlank()) {
+                            Text(lyricLine, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    WavySeekBar(
-                        progressFraction = state.sliderValue / 100f,
-                        isPlaying = state.controllerState.isPlaying,
-                        activeColor = Color.White,
-                        trackColor = Color.White.copy(alpha = 0.25f),
-                        thumbColor = Color.White,
-                        onSliderChange = actions.onSliderChange,
-                        onSliderChangeFinished = actions.onSliderChangeFinished,
-                    )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(state.timelineState.elapsedLabel(state.sliderValue / 100f), color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
-                        Text(state.timelineState.lengthLabel(), color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) {
-                            Icon(SimpIcons.SkipPrevious, "", tint = Color.White.copy(alpha = if (state.controllerState.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
-                        }
-                        RoundButton(72.dp, Color.White, onClick = { actions.onUIEvent(UIEvent.PlayPause) }) {
-                            Icon(
-                                if (state.controllerState.isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
-                                "", tint = Color.Black, modifier = Modifier.size(36.dp),
-                            )
-                        }
-                        RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) {
-                            Icon(SimpIcons.SkipNext, "", tint = Color.White.copy(alpha = if (state.controllerState.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
-                        }
-                    }
+                    Icon(SimpIcons.OpenInFull, "", tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
                 }
-
-                Spacer(Modifier.height(8.dp))
-                androidx.compose.animation.AnimatedVisibility(visible = extras) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SmallIcon(active = state.controllerState.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) {
-                            Icon(SimpIcons.Shuffle, "", tint = Color.White, modifier = Modifier.size(22.dp))
-                        }
-                        SmallIcon(active = state.controllerState.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) {
-                            Icon(
-                                if (state.controllerState.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat,
-                                "", tint = Color.White, modifier = Modifier.size(22.dp),
-                            )
-                        }
-                        SmallIcon(active = false, onClick = actions.onShowFullscreenLyrics) { Icon(SimpIcons.Lyrics, "", tint = Color.White) }
-                        SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = Color.White) }
-                    }
-                }
-                // The hint: this arrow (or a long press on ⋮) shows shuffle, repeat, lyrics and queue.
-                Text(
-                    if (extras) "▴" else "▾",
-                    color = Color.White.copy(alpha = 0.6f),
-                    modifier = Modifier.align(Alignment.CenterHorizontally).clip(CircleShape).clickable { extras = !extras }.padding(horizontal = 24.dp, vertical = 6.dp),
-                )
-                Spacer(Modifier.height(12.dp))
             }
         }
     }
 }
 
-/** previous | current | next, one card each; the neighbours peek in from the sides and shrink. */
+/** One big card per track with the info panel inside it; the neighbours peek in from the sides. */
 @Composable
 private fun Carousel(
     state: NowPlayingContentState,
     actions: NowPlayingContentActions,
+    glass: Boolean,
 ) {
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val cardSize = maxWidth * 0.68f
-        val sidePad = (maxWidth - cardSize) / 2
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val cardW = maxWidth * 0.80f
+        val cardH = minOf(maxHeight, cardW * 1.2f)
+        val sidePad = (maxWidth - cardW) / 2
         HorizontalPager(
             state = state.artworkPagerState,
             contentPadding = PaddingValues(horizontal = sidePad),
-            pageSpacing = 12.dp,
+            pageSpacing = 10.dp,
             beyondViewportPageCount = 1,
+            verticalAlignment = Alignment.CenterVertically,
             userScrollEnabled = state.artworkQueue.isNotEmpty(),
             key = { idx -> "erhu_${state.artworkQueue.getOrNull(idx)?.videoId.orEmpty()}_$idx" },
-            modifier = Modifier.fillMaxWidth().height(cardSize + 12.dp),
+            modifier = Modifier.fillMaxSize(),
         ) { page ->
             val offset = ((state.artworkPagerState.currentPage - page) + state.artworkPagerState.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
             val isCurrent = page == state.artworkPagerState.currentPage
@@ -264,34 +240,76 @@ private fun Carousel(
                     if (isCurrent) state.screenData.thumbnailURL else track?.thumbnails?.maxByOrNull { it.width * it.height }?.url,
                 )
             }
-            AsyncImage(
-                model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
-                        .data(url)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .crossfade(300)
-                        .build(),
-                contentDescription = track?.title,
-                contentScale = ContentScale.Crop,
-                placeholder = rememberHolderPainter(),
-                error = rememberHolderPainter(),
-                onSuccess = { if (isCurrent) actions.onArtworkBitmap(it.result.image.toImageBitmap()) },
-                onError = {
-                    val fallback = url?.replace("maxresdefault", "hqdefault")
-                    if (fallback != null && fallback != url) url = fallback
-                },
-                modifier =
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(cardH)
+                    .graphicsLayer {
+                        val s = lerp(1f, 0.9f, offset)
+                        scaleX = s
+                        scaleY = s
+                        alpha = lerp(1f, 0.55f, offset)
+                    }.clip(RoundedCornerShape(32.dp))
+                    .clickable(enabled = !isCurrent) { actions.onSeekToQueueIndex(page) },
+            ) {
+                AsyncImage(
+                    model =
+                        ImageRequest
+                            .Builder(LocalPlatformContext.current)
+                            .data(url)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .crossfade(300)
+                            .build(),
+                    contentDescription = track?.title,
+                    contentScale = ContentScale.Crop,
+                    placeholder = rememberHolderPainter(),
+                    error = rememberHolderPainter(),
+                    onSuccess = { if (isCurrent) actions.onArtworkBitmap(it.result.image.toImageBitmap()) },
+                    onError = {
+                        val fallback = url?.replace("maxresdefault", "hqdefault")
+                        if (fallback != null && fallback != url) url = fallback
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                // The info panel sits inside the card, on the picture
+                val title = if (isCurrent) state.screenData.nowPlayingTitle else track?.title.orEmpty()
+                val artist = if (isCurrent) state.screenData.artistName else track?.artists?.joinToString { it.name }.orEmpty()
+                val album = track?.album?.name.orEmpty()
+                Row(
                     Modifier
-                        .size(cardSize)
-                        .graphicsLayer {
-                            val s = lerp(1f, 0.82f, offset)
-                            scaleX = s
-                            scaleY = s
-                            alpha = lerp(1f, 0.6f, offset)
-                        }.clip(RoundedCornerShape(28.dp))
-                        .clickable(enabled = !isCurrent) { actions.onSeekToQueueIndex(page) },
-            )
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(if (glass) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.5f))
+                        .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(title, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            artist,
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = if (isCurrent) Modifier.clickable { actions.onNavigateToArtist() } else Modifier,
+                        )
+                        if (album.isNotBlank()) {
+                            Text(album, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    if (isCurrent) {
+                        RoundButton(44.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.ToggleLike) }) {
+                            Icon(
+                                if (state.controllerState.isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
+                                contentDescription = "",
+                                tint = if (state.controllerState.isLiked) Pink else Color.White,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -67,6 +67,7 @@ private fun hueColor(key: String, v: Float = 0.38f) = Color.hsv((key.hashCode().
 
 /** The redesigned Local tab: smart-mix hero, shelves, then Songs / Albums / Artists / Playlists / Favourites pages. */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 internal fun LocalHome(
     all: List<LocalSong>,
     mixes: List<SmartMix>,
@@ -76,6 +77,7 @@ internal fun LocalHome(
     sortLabel: String,
     sorter: (List<LocalSong>) -> List<LocalSong>,
     sortMenu: @Composable () -> Unit,
+    onDeleted: (Set<Long>) -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -101,6 +103,7 @@ internal fun LocalHome(
     val level = remember { mutableIntStateOf(viewPrefs.getInt("level", 2).coerceIn(0, LEVEL_MAX)) }
     fun setLevel(l: Int) { level.intValue = l; viewPrefs.edit().putInt("level", l).apply() }
 
+    ProvideLocalDeleter(library, onDeleted) {
     when (page) {
         LPage.Home -> {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPadding)) {
@@ -134,33 +137,33 @@ internal fun LocalHome(
                 if (recent.isNotEmpty()) item {
                     Shelf("Recently played", { go(LPage.Recent) }) {
                         itemsIndexed(recent.take(15)) { i, s ->
-                            Tile({ LocalArt(s, Modifier.fillMaxWidth().aspectRatio(1f), 14.dp) }, s.title, s.artist, onClick = { play(recent, i, "Recently played") })
+                            Tile({ LocalArt(s, Modifier.fillMaxWidth().aspectRatio(1f), 14.dp) }, s.title, s.artist, { o, c -> SongMenu(s, o, c, library, favIds, playlists) }, onClick = { play(recent, i, "Recently played") })
                         }
                     }
                 }
                 if (albums.isNotEmpty()) item {
                     val newest = albums.sortedByDescending { a -> a.songs.maxOf { it.addedAt } }.take(15)
                     Shelf("Albums", { go(LPage.Albums) }) {
-                        items(newest, key = { it.albumId }) { a -> AlbumTile(a, Modifier.width(140.dp)) { go(LPage.Album(a.albumId)) } }
+                        items(newest, key = { it.albumId }) { a -> AlbumTile(a, Modifier.width(140.dp), { o, c -> GroupMenu(o, c, a.songs, a.title, library, playlists, ::play) }) { go(LPage.Album(a.albumId)) } }
                     }
                 }
                 item {
                     Shelf("Playlists", { go(LPage.Playlists) }) {
                         item { NewTile(Modifier.width(140.dp)) { go(LPage.Playlists) } }
-                        items(playlists, key = { it.id }) { p -> PlaylistTile(p, ::songsOf, Modifier.width(140.dp)) { go(LPage.Playlist(p.id)) } }
+                        items(playlists, key = { it.id }) { p -> PlaylistTile(p, ::songsOf, Modifier.width(140.dp), { o, c -> PlaylistMenu(o, c, p, songsOf(p), library, ::play) }) { go(LPage.Playlist(p.id)) } }
                     }
                 }
                 if (favourites.isNotEmpty()) item {
                     Shelf("Favourites", { go(LPage.Favourites) }) {
                         itemsIndexed(favourites.take(15)) { i, s ->
-                            Tile({ LocalArt(s, Modifier.fillMaxWidth().aspectRatio(1f), 14.dp) }, s.title, s.artist, onClick = { play(favourites, i, "Favourites") })
+                            Tile({ LocalArt(s, Modifier.fillMaxWidth().aspectRatio(1f), 14.dp) }, s.title, s.artist, { o, c -> SongMenu(s, o, c, library, favIds, playlists) }, onClick = { play(favourites, i, "Favourites") })
                         }
                     }
                 }
                 if (artists.isNotEmpty()) item {
                     Shelf("Artists", { go(LPage.Artists) }) {
                         items(artists.take(15), key = { it.name }) { a ->
-                            Tile({ LocalArt(a.songs.first(), Modifier.fillMaxWidth().aspectRatio(1f), 70.dp) }, a.name, "${a.songs.size} songs", onClick = { go(LPage.Artist(a.name)) })
+                            Tile({ LocalArt(a.songs.first(), Modifier.fillMaxWidth().aspectRatio(1f), 70.dp) }, a.name, "${a.songs.size} songs", { o, c -> GroupMenu(o, c, a.songs, a.name, library, playlists, ::play) }, onClick = { go(LPage.Artist(a.name)) })
                         }
                     }
                 }
@@ -200,14 +203,16 @@ internal fun LocalHome(
         LPage.Albums -> Column(Modifier.fillMaxSize()) {
             PageHeader("Albums", ::back)
             LazyVerticalGrid(GridCells.Adaptive(150.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(albums, key = { it.albumId }) { a -> AlbumTile(a, Modifier) { go(LPage.Album(a.albumId)) } }
+                items(albums, key = { it.albumId }) { a -> AlbumTile(a, Modifier, { o, c -> GroupMenu(o, c, a.songs, a.title, library, playlists, ::play) }) { go(LPage.Album(a.albumId)) } }
             }
         }
         LPage.Artists -> Column(Modifier.fillMaxSize()) {
             PageHeader("Artists", ::back)
             LazyColumn(contentPadding = PaddingValues(bottom = bottomPadding)) {
                 items(artists, key = { it.name }) { a ->
-                    Row(Modifier.fillMaxWidth().clickable { go(LPage.Artist(a.name)) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    var open by remember { mutableStateOf(false) }
+                    Row(Modifier.fillMaxWidth().combinedClickable(onClick = { go(LPage.Artist(a.name)) }, onLongClick = { open = true }).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        GroupMenu(open, { open = false }, a.songs, a.name, library, playlists, ::play)
                         LocalArt(a.songs.first(), Modifier.size(52.dp), 26.dp)
                         Spacer(Modifier.width(14.dp))
                         Column {
@@ -225,10 +230,11 @@ internal fun LocalHome(
                 PageHeader("Playlists", ::back)
                 LazyVerticalGrid(GridCells.Adaptive(150.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     item { NewTile(Modifier) { creating = true } }
-                    items(playlists, key = { it.id }) { p -> PlaylistTile(p, ::songsOf, Modifier) { go(LPage.Playlist(p.id)) } }
+                    items(playlists, key = { it.id }) { p -> PlaylistTile(p, ::songsOf, Modifier, { o, c -> PlaylistMenu(o, c, p, songsOf(p), library, ::play) }) { go(LPage.Playlist(p.id)) } }
                 }
             }
         }
+    }
     }
 }
 
@@ -249,8 +255,11 @@ private fun Shelf(title: String, onMore: () -> Unit, content: LazyListScope.() -
 }
 
 @Composable
-private fun Tile(art: @Composable () -> Unit, title: String, subtitle: String, onClick: () -> Unit) {
-    Column(Modifier.width(130.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun Tile(art: @Composable () -> Unit, title: String, subtitle: String, menu: @Composable (Boolean, () -> Unit) -> Unit = { _, _ -> }, onClick: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Column(Modifier.width(130.dp).clip(RoundedCornerShape(12.dp)).combinedClickable(onClick = onClick, onLongClick = { open = true })) {
+        menu(open) { open = false }
         art()
         Spacer(Modifier.height(6.dp))
         Text(title, color = Ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -259,8 +268,11 @@ private fun Tile(art: @Composable () -> Unit, title: String, subtitle: String, o
 }
 
 @Composable
-private fun AlbumTile(a: LocalAlbum, modifier: Modifier, onClick: () -> Unit) {
-    Column(modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun AlbumTile(a: LocalAlbum, modifier: Modifier, menu: @Composable (Boolean, () -> Unit) -> Unit, onClick: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Column(modifier.clip(RoundedCornerShape(12.dp)).combinedClickable(onClick = onClick, onLongClick = { open = true })) {
+        menu(open) { open = false }
         LocalArt(a.songs.first(), Modifier.fillMaxWidth().aspectRatio(1f), 14.dp)
         Spacer(Modifier.height(6.dp))
         Text(a.title, color = Ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -269,9 +281,12 @@ private fun AlbumTile(a: LocalAlbum, modifier: Modifier, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PlaylistTile(p: LocalPlaylist, songsOf: (LocalPlaylist) -> List<LocalSong>, modifier: Modifier, onClick: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun PlaylistTile(p: LocalPlaylist, songsOf: (LocalPlaylist) -> List<LocalSong>, modifier: Modifier, menu: @Composable (Boolean, () -> Unit) -> Unit, onClick: () -> Unit) {
     val songs = remember(p) { songsOf(p) }
-    Column(modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick)) {
+    var open by remember { mutableStateOf(false) }
+    Column(modifier.clip(RoundedCornerShape(12.dp)).combinedClickable(onClick = onClick, onLongClick = { open = true })) {
+        menu(open) { open = false }
         PlaylistArt(p, songs, Modifier.fillMaxWidth().aspectRatio(1f))
         Spacer(Modifier.height(6.dp))
         Text(p.name, color = Ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -362,11 +377,69 @@ private fun SongMenu(
     val fav = song.id in favIds
     if (adding) AddToPlaylistDialog(listOf(song.id), library, playlists) { adding = false }
     if (tags) LocalTagEditorDialog(song.trackId) { tags = false }
+    val deleter = LocalDeleter.current
     DropdownMenu(expanded = open, onDismissRequest = close) {
         DropdownMenuItem(text = { Text(if (fav) "Remove from favourites" else "Add to favourites") }, onClick = { library.toggleFavourite(song.id); close() })
         DropdownMenuItem(text = { Text("Add to playlist") }, onClick = { close(); adding = true })
         DropdownMenuItem(text = { Text("Edit tags & artwork") }, onClick = { close(); tags = true })
         extra(close)
+        DropdownMenuItem(text = { Text("Delete from device", color = Color(0xFFFF6B6B)) }, onClick = { close(); deleter(listOf(song), "\"${song.title}\"") })
+    }
+}
+
+/** Long-press menu for an album or artist: play, shuffle, add to a playlist, delete every song from the phone. */
+@Composable
+private fun GroupMenu(
+    open: Boolean,
+    close: () -> Unit,
+    songs: List<LocalSong>,
+    name: String,
+    library: LocalLibrary,
+    playlists: List<LocalPlaylist>,
+    play: (List<LocalSong>, Int, String) -> Unit,
+) {
+    var adding by remember { mutableStateOf(false) }
+    val deleter = LocalDeleter.current
+    if (adding) AddToPlaylistDialog(songs.map { it.id }, library, playlists) { adding = false }
+    DropdownMenu(expanded = open, onDismissRequest = close) {
+        DropdownMenuItem(text = { Text("Play") }, onClick = { close(); play(songs, 0, name) })
+        DropdownMenuItem(text = { Text("Shuffle") }, onClick = { close(); play(songs.shuffled(), 0, name) })
+        DropdownMenuItem(text = { Text("Add to playlist") }, onClick = { close(); adding = true })
+        DropdownMenuItem(text = { Text("Delete from device", color = Color(0xFFFF6B6B)) }, onClick = { close(); deleter(songs, "All ${songs.size} songs in \"$name\"") })
+    }
+}
+
+/** Long-press menu for a playlist: play, shuffle, rename, delete the list (files stay), or delete its songs from the phone. */
+@Composable
+private fun PlaylistMenu(
+    open: Boolean,
+    close: () -> Unit,
+    p: LocalPlaylist,
+    songs: List<LocalSong>,
+    library: LocalLibrary,
+    play: (List<LocalSong>, Int, String) -> Unit,
+) {
+    var renaming by remember { mutableStateOf(false) }
+    var removing by remember { mutableStateOf(false) }
+    val deleter = LocalDeleter.current
+    if (renaming) NameDialog("Rename playlist", p.name, "Save", { renaming = false }) { library.rename(p.id, it); renaming = false }
+    if (removing) {
+        AlertDialog(
+            onDismissRequest = { removing = false },
+            title = { Text("Delete \"${p.name}\"?") },
+            text = { Text("The songs stay on your phone.") },
+            confirmButton = { TextButton(onClick = { removing = false; library.delete(p.id) }) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { removing = false }) { Text("Cancel") } },
+        )
+    }
+    DropdownMenu(expanded = open, onDismissRequest = close) {
+        if (songs.isNotEmpty()) {
+            DropdownMenuItem(text = { Text("Play") }, onClick = { close(); play(songs, 0, p.name) })
+            DropdownMenuItem(text = { Text("Shuffle") }, onClick = { close(); play(songs.shuffled(), 0, p.name) })
+        }
+        DropdownMenuItem(text = { Text("Rename") }, onClick = { close(); renaming = true })
+        DropdownMenuItem(text = { Text("Delete playlist") }, onClick = { close(); removing = true })
+        if (songs.isNotEmpty()) DropdownMenuItem(text = { Text("Delete songs from device", color = Color(0xFFFF6B6B)) }, onClick = { close(); deleter(songs, "All ${songs.size} songs in \"${p.name}\"") })
     }
 }
 
