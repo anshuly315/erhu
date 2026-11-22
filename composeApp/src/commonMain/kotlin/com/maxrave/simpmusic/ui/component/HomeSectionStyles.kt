@@ -85,9 +85,16 @@ fun HomeDiscoverSection(
     // The carousel's own default, named so a mouse drag released on Desktop advances the same one card.
     val flingBehavior = CarouselDefaults.singleAdvanceFlingBehavior(state = state)
     val scope = rememberCoroutineScope()
+    var collapsed by androidx.compose.runtime.saveable.rememberSaveable(data.title) { mutableStateOf(false) }
     Column {
-        HomeSectionHeader(data = data, navController = navController, onPlayAll = { homeViewModel.playAll(data) })
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        HomeSectionHeader(
+            data = data,
+            navController = navController,
+            onPlayAll = { homeViewModel.playAll(data) },
+            collapsed = collapsed,
+            onToggleCollapse = { collapsed = !collapsed },
+        )
+        if (!collapsed) BoxWithConstraints(Modifier.fillMaxWidth()) {
             // A phone narrower than two targets still gets one large card with neighbours beside it.
             val heroWidth = (maxWidth * 0.74f).coerceAtMost(HERO_TARGET_WIDTH)
             HorizontalCenteredHeroCarousel(

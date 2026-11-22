@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -78,6 +79,7 @@ import kotlin.math.absoluteValue
  * glass": the same carousel over the blurred artwork, with glass cards. The swipe is the shell's
  * artwork pager, so a swipe skips the track exactly as the other styles do.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun NowPlayingContentErhu(
     state: NowPlayingContentState,
@@ -85,6 +87,8 @@ fun NowPlayingContentErhu(
     glass: Boolean,
 ) {
     val seed = state.startColor.value
+    // Shuffle, repeat, lyrics and queue fold away; long-press the ⋮ (or tap the arrow) to show them.
+    var extras by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     val cardFill = if (glass) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.28f)
     val cardBorder = if (glass) BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)) else null
 
@@ -122,7 +126,11 @@ fun NowPlayingContentErhu(
                         style = MaterialTheme.typography.labelLarge,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
-                    RoundButton(44.dp, Color.White.copy(alpha = 0.14f), onClick = actions.onShowMoreSheet) {
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.14f))
+                            .combinedClickable(onClick = actions.onShowMoreSheet, onLongClick = { extras = !extras }),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Icon(SimpIcons.MoreVert, contentDescription = "", tint = Color.White)
                     }
                 }
@@ -184,12 +192,9 @@ fun NowPlayingContentErhu(
                     Spacer(Modifier.height(8.dp))
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        SmallIcon(active = state.controllerState.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) {
-                            Icon(SimpIcons.Shuffle, "", tint = Color.White, modifier = Modifier.size(22.dp))
-                        }
                         RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Previous) }) {
                             Icon(SimpIcons.SkipPrevious, "", tint = Color.White.copy(alpha = if (state.controllerState.isPreviousAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
                         }
@@ -202,23 +207,32 @@ fun NowPlayingContentErhu(
                         RoundButton(52.dp, Color.Transparent, onClick = { actions.onUIEvent(UIEvent.Next) }) {
                             Icon(SimpIcons.SkipNext, "", tint = Color.White.copy(alpha = if (state.controllerState.isNextAvailable) 1f else 0.4f), modifier = Modifier.size(32.dp))
                         }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.animation.AnimatedVisibility(visible = extras) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        SmallIcon(active = state.controllerState.isShuffle, onClick = { actions.onUIEvent(UIEvent.Shuffle) }) {
+                            Icon(SimpIcons.Shuffle, "", tint = Color.White, modifier = Modifier.size(22.dp))
+                        }
                         SmallIcon(active = state.controllerState.repeatState !is RepeatState.None, onClick = { actions.onUIEvent(UIEvent.Repeat) }) {
                             Icon(
                                 if (state.controllerState.repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat,
                                 "", tint = Color.White, modifier = Modifier.size(22.dp),
                             )
                         }
+                        SmallIcon(active = false, onClick = actions.onShowFullscreenLyrics) { Icon(SimpIcons.Lyrics, "", tint = Color.White) }
+                        SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = Color.White) }
                     }
                 }
-
+                // The hint: this arrow (or a long press on ⋮) shows shuffle, repeat, lyrics and queue.
+                Text(
+                    if (extras) "▴" else "▾",
+                    color = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.align(Alignment.CenterHorizontally).clip(CircleShape).clickable { extras = !extras }.padding(horizontal = 24.dp, vertical = 6.dp),
+                )
                 Spacer(Modifier.height(12.dp))
-                Row(
-                    Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    SmallIcon(active = false, onClick = actions.onShowFullscreenLyrics) { Icon(SimpIcons.Lyrics, "", tint = Color.White) }
-                    SmallIcon(active = false, onClick = actions.onShowQueue) { Icon(SimpIcons.QueueMusic, "", tint = Color.White) }
-                }
             }
         }
     }

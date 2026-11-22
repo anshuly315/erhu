@@ -79,6 +79,7 @@ internal fun LocalHome(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var moreChips by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     val library = remember { LocalLibrary.get(context) }
     val stats = remember { PlayStats(context) }
     val favIds by library.favourites.collectAsState()
@@ -121,9 +122,12 @@ internal fun LocalHome(
                         item { Chip("Songs", false) { go(LPage.Songs) } }
                         item { Chip("Albums", false) { go(LPage.Albums) } }
                         item { Chip("Artists", false) { go(LPage.Artists) } }
-                        item { Chip("Playlists", false) { go(LPage.Playlists) } }
-                        item { Chip("♥ Favourites", false) { go(LPage.Favourites) } }
-                        item { Chip("VYBE", false) { onVybe() } }
+                        item { MoreChip("More", moreChips) { moreChips = !moreChips } }
+                        if (moreChips) {
+                            item { Chip("Playlists", false) { go(LPage.Playlists) } }
+                            item { Chip("♥ Favourites", false) { go(LPage.Favourites) } }
+                            item { Chip("VYBE", false) { onVybe() } }
+                        }
                     }
                     Spacer(Modifier.height(20.dp))
                 }
@@ -386,7 +390,8 @@ private fun SongRow(
             Text(song.artist + if (song.album.isNotBlank()) " · ${song.album}" else "", color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(fmt(song.durationMs), color = Muted, fontSize = 12.sp)
-        Text(if (fav) "♥" else "♡", color = if (fav) Color(0xFFFF8FB1) else Muted, fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { library.toggleFavourite(song.id) }.padding(8.dp))
+        // Favouriting lives in the menu (⋮ or long-press); the row only shows the heart once it is on.
+        if (fav) Text("♥", color = Color(0xFFFF8FB1), fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp))
         Box {
             Text("⋮", color = Muted, fontSize = 20.sp, modifier = Modifier.clip(CircleShape).clickable { menu = true }.padding(horizontal = 10.dp, vertical = 6.dp))
             SongMenu(song, menu, { menu = false }, library, favIds, playlists)
@@ -417,8 +422,7 @@ private fun SongPinch(
         subtitle = { it.artist + if (it.album.isNotBlank()) " · ${it.album}" else "" },
         art = { s, m, c -> LocalArt(s, m, c) },
         trailing = { s ->
-            val fav = s.id in favIds
-            Text(if (fav) "♥" else "♡", color = if (fav) Color(0xFFFF8FB1) else Muted, fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { library.toggleFavourite(s.id) }.padding(8.dp))
+            if (s.id in favIds) Text("♥", color = Color(0xFFFF8FB1), fontSize = 18.sp, modifier = Modifier.padding(horizontal = 8.dp))
         },
         menu = { s, open, close -> SongMenu(s, open, close, library, favIds, playlists) { c -> extra(s, c) } },
         onClick = { i -> play(songs, i, queueName) },

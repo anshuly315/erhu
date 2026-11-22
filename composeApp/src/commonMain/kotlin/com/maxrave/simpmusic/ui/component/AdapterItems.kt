@@ -161,9 +161,16 @@ fun HomeItem(
         )
     }
 
+    var collapsed by androidx.compose.runtime.saveable.rememberSaveable(data.title) { mutableStateOf(false) }
     Column {
-        HomeSectionHeader(data = data, navController = navController, onPlayAll = { homeViewModel.playAll(data) })
-        LazyRow(
+        HomeSectionHeader(
+            data = data,
+            navController = navController,
+            onPlayAll = { homeViewModel.playAll(data) },
+            collapsed = collapsed,
+            onToggleCollapse = { collapsed = !collapsed },
+        )
+        if (!collapsed) LazyRow(
             modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior),
             state = lazyListState,
             flingBehavior = snapperFlingBehavior,
@@ -182,7 +189,7 @@ fun HomeItem(
                 }
             }
         }
-        if (getPlatform() == Platform.Desktop) {
+        if (!collapsed && getPlatform() == Platform.Desktop) {
             HorizontalScrollBar(
                 modifier =
                     Modifier
@@ -200,11 +207,15 @@ fun HomeItem(
  * sends with the shelf — "More" (a browse page) or "Play all" (a watch endpoint). Every shelf
  * style uses it, so the two buttons look and behave the same everywhere.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeSectionHeader(
     data: HomeItem,
     navController: NavController,
     onPlayAll: () -> Unit,
+    // Long-press the title to fold the shelf away; the little arrow is the hint.
+    collapsed: Boolean = false,
+    onToggleCollapse: (() -> Unit)? = null,
 ) {
     val channelId = data.channelId
     val moreEndpoint = data.moreEndpoint
@@ -214,21 +225,27 @@ fun HomeSectionHeader(
                 Modifier
                     .focusable(true)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        navController.navigate(
-                            ArtistDestination(
-                                channelId = channelId,
-                            ),
-                        )
-                    }
+                    .combinedClickable(
+                        onClick = {
+                            navController.navigate(
+                                ArtistDestination(
+                                    channelId = channelId,
+                                ),
+                            )
+                        },
+                        onLongClick = onToggleCollapse,
+                    )
             } else if (moreEndpoint != null) {
                 // The section title carries the same endpoint as its "More" button, as on the web.
                 Modifier
                     .focusable(true)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { navController.navigateToMoreEndpoint(moreEndpoint, data.title) }
+                    .combinedClickable(
+                        onClick = { navController.navigateToMoreEndpoint(moreEndpoint, data.title) },
+                        onLongClick = onToggleCollapse,
+                    )
             } else {
-                Modifier
+                Modifier.combinedClickable(onClick = { onToggleCollapse?.invoke() }, onLongClick = onToggleCollapse)
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -275,6 +292,13 @@ fun HomeSectionHeader(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (onToggleCollapse != null) {
+            Text(
+                text = if (collapsed) "▸" else "▾",
+                style = typo().bodySmall,
+                modifier = Modifier.clickable { onToggleCollapse() }.padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
         if (moreEndpoint != null) {

@@ -3,6 +3,7 @@ package org.simpmusic.radio.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -203,15 +205,19 @@ private fun HomePage(
                 }
                 Spacer(Modifier.height(14.dp))
             }
+            var moreFilters by rememberSaveable { mutableStateOf(false) }
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { Chip("Near me", true) { open(Page.Near) } }
-                item { Chip("Podcasts", false) { open(Page.Podcasts) } }
                 item { Chip("Favourites", false) { open(Page.Favourites) } }
-                item { Chip("Countries", false) { open(Page.Facets("Countries", "country")) } }
-                item { Chip("Languages", false) { open(Page.Facets("Languages", "language")) } }
-                item { Chip("Genres", false) { open(Page.Facets("Genres", "tag")) } }
-                item { Chip("All stations", false) { open(Page.Stations("All stations") { api.popular(1000) }) } }
                 item { Chip("Trending", false) { open(Page.Stations("Trending now") { api.trending(120) }) } }
+                item { MoreChip("Filters", moreFilters) { moreFilters = !moreFilters } }
+                if (moreFilters) {
+                    item { Chip("Podcasts", false) { open(Page.Podcasts) } }
+                    item { Chip("Countries", false) { open(Page.Facets("Countries", "country")) } }
+                    item { Chip("Languages", false) { open(Page.Facets("Languages", "language")) } }
+                    item { Chip("Genres", false) { open(Page.Facets("Genres", "tag")) } }
+                    item { Chip("All stations", false) { open(Page.Stations("All stations") { api.popular(1000) }) } }
+                }
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -419,6 +425,22 @@ internal fun Chip(
             .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp),
     ) {
         Text(text, color = if (selected) OnMint else Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** The "more" chip: tap or long-press to fold the extra chips in or out. The arrow is the hint. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+internal fun MoreChip(
+    label: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Box(
+        Modifier.clip(RoundedCornerShape(50)).background(Color(0x14FFFFFF))
+            .combinedClickable(onClick = onToggle, onLongClick = onToggle).padding(horizontal = 16.dp, vertical = 9.dp),
+    ) {
+        Text(label + if (expanded) " ▴" else " ▾", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
