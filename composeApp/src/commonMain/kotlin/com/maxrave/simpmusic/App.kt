@@ -520,7 +520,13 @@ fun App(
         themeMode = themeMode,
         themeColorSource = themeColorSource,
         customThemeColor = parseThemeColorHex(customThemeColorHex),
-        artworkThemeColor = rememberArtworkThemeColor(viewModel, enabled = themeColorSource == DataStoreManager.THEME_COLOR_ARTWORK),
+        artworkThemeColor =
+            rememberArtworkThemeColor(
+                viewModel,
+                enabled =
+                    themeColorSource == DataStoreManager.THEME_COLOR_ARTWORK ||
+                        themeColorSource == DataStoreManager.THEME_COLOR_ARTWORK_GRADIENT,
+            ),
         // The setting governs Desktop too, the same as Android: off, every glass surface draws flat.
         liquidGlassEnabled = isLiquidGlassEnabled == TRUE,
     ) {
@@ -542,11 +548,20 @@ fun App(
         // On Desktop the page is the panel: its colour is painted outside the recorded layer, and
         // colorScheme.background carries the seed's hue, which the glass's saturation boost brings out.
         val backdrop = rememberBackdrop(if (isDesktopShell) desktopPanel else MaterialTheme.colorScheme.background)
+        // Gradient UI (Android): one gradient behind everything; the Scaffold and the main pages are see-through.
+        val pageGradient = if (isDesktopShell) null else com.maxrave.simpmusic.ui.theme.LocalPageGradient.current
         Scaffold(
             // Watches for userStarted without consuming anything. Dialogs and sheets are windows or
             // layers of their own, so a press inside one (closing the update dialog, say) does not count.
             modifier =
-                Modifier.pointerInput(Unit) {
+                Modifier
+                    .then(
+                        if (pageGradient != null) {
+                            Modifier.background(androidx.compose.ui.graphics.Brush.verticalGradient(pageGradient))
+                        } else {
+                            Modifier
+                        },
+                    ).pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (!userStarted) {
                             val type = awaitPointerEvent(PointerEventPass.Initial).type
@@ -557,7 +572,11 @@ fun App(
                     }
                 },
             containerColor =
-                if (isDesktopShell) desktopWindow else MaterialTheme.colorScheme.background,
+                when {
+                    isDesktopShell -> desktopWindow
+                    pageGradient != null -> androidx.compose.ui.graphics.Color.Transparent
+                    else -> MaterialTheme.colorScheme.background
+                },
             bottomBar = {
                 if (!isTablet) {
                     AnimatedVisibility(

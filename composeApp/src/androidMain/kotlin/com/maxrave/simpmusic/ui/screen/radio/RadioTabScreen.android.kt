@@ -53,10 +53,12 @@ private fun ProvideRadioTheme(content: @Composable () -> Unit) {
     val dark = com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme.current
     val glass = com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled.current
     val strength = com.maxrave.simpmusic.ui.component.GlassTuning.strength
+    val gradient = com.maxrave.simpmusic.ui.theme.LocalPageGradient.current != null
     val theme =
-        remember(scheme, dark, glass, strength) {
+        remember(scheme, dark, glass, strength, gradient) {
             org.simpmusic.radio.ui.RadioTheme(
-                bg = scheme.background,
+                // Gradient UI: the app's gradient shows through; the glows still give the glass something to frost.
+                bg = if (gradient) androidx.compose.ui.graphics.Color.Transparent else scheme.background,
                 surface = scheme.surfaceContainerHigh,
                 accent = scheme.primary,
                 onAccent = scheme.onPrimary,

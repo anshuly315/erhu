@@ -680,6 +680,9 @@ interface DataStoreManager {
         /** The accent follows the cover of the song that is playing (erhu's "Dominant colour" theme). */
         const val THEME_COLOR_ARTWORK = "ARTWORK"
 
+        /** As [THEME_COLOR_ARTWORK], and the main pages sit on a gradient from the cover (erhu's "Gradient UI"). */
+        const val THEME_COLOR_ARTWORK_GRADIENT = "ARTWORK_GRADIENT"
+
         const val DEFAULT_THEME_COLOR_HEX = "FF8ECAE6"
 
         const val NOW_PLAYING_STYLE_SPOTIFY = "SPOTIFY"

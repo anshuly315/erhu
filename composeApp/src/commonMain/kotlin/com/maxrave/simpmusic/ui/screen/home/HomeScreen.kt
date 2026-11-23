@@ -337,7 +337,10 @@ fun HomeScreen(
     // wrong colour and draws a seam where the first item stops. Same light check as App.kt's
     // isLightScheme.
     val pageBackground =
-        if (getPlatform() == Platform.Desktop) {
+        if (com.maxrave.simpmusic.ui.theme.LocalPageGradient.current != null && getPlatform() != Platform.Desktop) {
+            // Gradient UI: the page is see-through, so the header's fade ends on nothing.
+            Color.Transparent
+        } else if (getPlatform() == Platform.Desktop) {
             if (isLightTheme) MaterialTheme.colorScheme.surfaceContainer else desktopPanelDark
         } else {
             backgroundColor

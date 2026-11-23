@@ -72,6 +72,20 @@ val LocalIsDarkTheme = staticCompositionLocalOf { true }
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
 
 /**
+ * erhu's "Gradient UI": with Theme colour on "Gradient from the playing song", the main pages are
+ * see-through and sit on this vertical gradient (the cover's tone at the top, the page colour at
+ * the bottom), painted once behind the navigation host. Null for every other theme.
+ */
+val LocalPageGradient = androidx.compose.runtime.compositionLocalOf<List<Color>?> { null }
+
+internal fun pageGradientOf(scheme: androidx.compose.material3.ColorScheme): List<Color> =
+    listOf(
+        androidx.compose.ui.graphics.lerp(scheme.background, scheme.primaryContainer, 0.6f),
+        androidx.compose.ui.graphics.lerp(scheme.background, scheme.primaryContainer, 0.28f),
+        scheme.background,
+    )
+
+/**
  * The dark scheme to use for immersive screens while the app itself is on the light theme.
  * Provided by [AppTheme], consumed by [ForceDarkContent]; null only outside of [AppTheme].
  */
@@ -142,7 +156,7 @@ fun AppTheme(
     val seedColor =
         when (themeColorSource) {
             DataStoreManager.THEME_COLOR_CUSTOM -> customThemeColor ?: seed
-            DataStoreManager.THEME_COLOR_ARTWORK -> artworkThemeColor ?: seed
+            DataStoreManager.THEME_COLOR_ARTWORK, DataStoreManager.THEME_COLOR_ARTWORK_GRADIENT -> artworkThemeColor ?: seed
             else -> seed
         }
     // Light pins the neutrals to a neutral-grey ramp (the seed otherwise tints them warm/cream);
@@ -178,6 +192,8 @@ fun AppTheme(
                 LocalIsDarkTheme provides isDark,
                 LocalForcedDarkColorScheme provides forcedDarkScheme,
                 LocalLiquidGlassEnabled provides liquidGlassEnabled,
+                LocalPageGradient provides
+                    if (themeColorSource == DataStoreManager.THEME_COLOR_ARTWORK_GRADIENT) pageGradientOf(colorScheme) else null,
                 content = content,
             )
         },

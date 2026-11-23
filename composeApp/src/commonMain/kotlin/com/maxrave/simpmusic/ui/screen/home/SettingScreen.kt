@@ -967,6 +967,7 @@ fun SettingScreen(
                             }
                             add(DataStoreManager.THEME_COLOR_CUSTOM to stringResource(Res.string.theme_color_custom))
                             add(DataStoreManager.THEME_COLOR_ARTWORK to "From the playing song")
+                            add(DataStoreManager.THEME_COLOR_ARTWORK_GRADIENT to "Gradient from the playing song")
                         }
                     SettingItem(
                         title = stringResource(Res.string.theme_color),
