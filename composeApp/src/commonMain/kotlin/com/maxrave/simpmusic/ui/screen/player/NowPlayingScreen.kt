@@ -666,6 +666,7 @@ fun NowPlayingScreenContent(
             lyricsOffsetMs = lyricsOffsetMs.toLong(),
             videoAspectRatio = rememberVideoAspectRatio(MAIN_PLAYER) ?: 16f / 9,
             videoId = commentsVideoId,
+            commentsAvailable = !com.maxrave.domain.data.radio.RadioStreams.isRadio(commentsVideoId),
         )
     val actions =
         NowPlayingContentActions(

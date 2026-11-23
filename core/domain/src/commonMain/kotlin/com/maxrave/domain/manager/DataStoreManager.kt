@@ -535,7 +535,7 @@ interface DataStoreManager {
 
     suspend fun setThemeMode(mode: String)
 
-    /** One of [THEME_COLOR_DEFAULT], [THEME_COLOR_WALLPAPER], [THEME_COLOR_CUSTOM]. */
+    /** One of [THEME_COLOR_DEFAULT], [THEME_COLOR_WALLPAPER], [THEME_COLOR_CUSTOM], [THEME_COLOR_ARTWORK]. */
     val themeColorSource: Flow<String>
 
     suspend fun setThemeColorSource(source: String)
@@ -676,6 +676,9 @@ interface DataStoreManager {
         const val THEME_COLOR_DEFAULT = "DEFAULT"
         const val THEME_COLOR_WALLPAPER = "WALLPAPER"
         const val THEME_COLOR_CUSTOM = "CUSTOM"
+
+        /** The accent follows the cover of the song that is playing (erhu's "Dominant colour" theme). */
+        const val THEME_COLOR_ARTWORK = "ARTWORK"
 
         const val DEFAULT_THEME_COLOR_HEX = "FF8ECAE6"
 

@@ -704,7 +704,7 @@ private fun NowPlayingSoundCloudLayout(
                     tint = if (state.controllerState.isLiked) colors.primary else colors.onSurface,
                     onClick = { actions.onUIEvent(UIEvent.ToggleLike) },
                 )
-                RippleIconButton(imageVector = SimpIcons.CommentOutline, tint = colors.onSurface, onClick = actions.onShowComments)
+                if (state.commentsAvailable) RippleIconButton(imageVector = SimpIcons.CommentOutline, tint = colors.onSurface, onClick = actions.onShowComments)
                 RippleIconButton(
                     imageVector = SimpIcons.Shuffle,
                     tint = if (state.controllerState.isShuffle) colors.primary else colors.onSurface,

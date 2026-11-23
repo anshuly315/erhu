@@ -1062,7 +1062,7 @@ internal fun AppleMusicBottomCluster(
             activeContentColor = activePillContent,
             onOpenOutput = onOpenOutput,
             onOpenListenTogether = actions.onOpenListenTogether,
-            onOpenComments = actions.onShowComments,
+            onOpenComments = { if (state.commentsAvailable) actions.onShowComments() },
         )
         Spacer(modifier = Modifier.height(14.dp))
         // Crossfaded, since it changes on its own — a headset connecting renames the line under the

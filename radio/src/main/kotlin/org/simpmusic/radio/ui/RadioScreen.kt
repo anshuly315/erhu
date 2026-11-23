@@ -75,6 +75,8 @@ data class RadioTheme(
     val ink: Color = Color(0xFFF2F5F3),
     val dark: Boolean = true,
     val glass: Boolean = true,
+    /** 0 clear .. 1 frosted (Settings > Glass strength); 0.5 is the stock look. */
+    val glassStrength: Float = 0.5f,
 )
 
 val LocalRadioTheme = androidx.compose.runtime.staticCompositionLocalOf { RadioTheme() }
@@ -112,11 +114,14 @@ internal fun Modifier.glass(shape: androidx.compose.ui.graphics.Shape): Modifier
         effects = {
             vibrancy()
             colorControls(brightness = 0.05f, contrast = 1f, saturation = 1.5f)
-            blur(10f.dp.toPx())
+            blur(10f.dp.toPx() * (0.4f + 1.2f * theme.glassStrength))
             lens(12f.dp.toPx(), size.minDimension / 2f, true)
         },
         shape = { shape },
-        onDrawSurface = { drawRect(if (theme.dark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.35f)) },
+        onDrawSurface = {
+            val tint = 0.5f + theme.glassStrength
+            drawRect(if (theme.dark) Color.White.copy(alpha = 0.08f * tint) else Color.White.copy(alpha = (0.35f * tint).coerceAtMost(0.8f)))
+        },
     ).border(1.dp, rim, shape)
 }
 
@@ -698,7 +703,7 @@ internal fun LocalArt(
     corner: androidx.compose.ui.unit.Dp = 14.dp,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val res = remember(song.id) { org.simpmusic.radio.data.FallbackArt.resFor(context, song.id.toString()) }
+    val res = remember(song.id) { org.simpmusic.radio.data.FallbackArt.songResFor(context, song.albumId.toString()) }
     Box(modifier.clip(RoundedCornerShape(corner)).background(Surface)) {
         val fallback: @Composable () -> Unit = {
             if (res != 0) androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(res), null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)

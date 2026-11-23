@@ -126,6 +126,7 @@ fun AppTheme(
     themeMode: String = DataStoreManager.THEME_MODE_DARK,
     themeColorSource: String = DataStoreManager.THEME_COLOR_DEFAULT,
     customThemeColor: Color? = null,
+    artworkThemeColor: Color? = null,
     liquidGlassEnabled: Boolean = true,
     content:
         @Composable()
@@ -139,10 +140,10 @@ fun AppTheme(
             null
         }
     val seedColor =
-        if (themeColorSource == DataStoreManager.THEME_COLOR_CUSTOM) {
-            customThemeColor ?: seed
-        } else {
-            seed
+        when (themeColorSource) {
+            DataStoreManager.THEME_COLOR_CUSTOM -> customThemeColor ?: seed
+            DataStoreManager.THEME_COLOR_ARTWORK -> artworkThemeColor ?: seed
+            else -> seed
         }
     // Light pins the neutrals to a neutral-grey ramp (the seed otherwise tints them warm/cream);
     // dark keeps the generated neutrals as they are.

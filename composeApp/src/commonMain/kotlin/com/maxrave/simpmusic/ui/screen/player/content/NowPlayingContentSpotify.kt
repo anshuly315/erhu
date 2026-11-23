@@ -1116,7 +1116,7 @@ fun NowPlayingContentSpotify(
                                                 // fills its 20×20 live area, so its corners reach 13.3dp from the
                                                 // centre, past the 24dp circle the buttons beside it clip to: this
                                                 // one clips to 28dp in the same 24dp slot.
-                                                Box(modifier = Modifier.size(24.dp)) {
+                                                if (state.commentsAvailable) Box(modifier = Modifier.size(24.dp)) {
                                                     IconButton(
                                                         modifier =
                                                             Modifier

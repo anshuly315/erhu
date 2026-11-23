@@ -1073,12 +1073,12 @@ private fun ExpressiveConnectedGroup(
         }
         ExpressiveConnectedSlot(
             shape = endCap,
-            onClick = { actions.onShowComments() },
+            onClick = { if (state.commentsAvailable) actions.onShowComments() },
         ) {
             Icon(
                 imageVector = SimpIcons.CommentOutline,
                 contentDescription = stringResource(Res.string.comments),
-                tint = colorScheme.onSurfaceVariant,
+                tint = colorScheme.onSurfaceVariant.copy(alpha = if (state.commentsAvailable) 1f else 0.38f),
                 modifier = Modifier.size(22.dp),
             )
         }

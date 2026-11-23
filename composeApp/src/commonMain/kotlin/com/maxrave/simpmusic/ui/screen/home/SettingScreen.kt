@@ -966,6 +966,7 @@ fun SettingScreen(
                                 add(DataStoreManager.THEME_COLOR_WALLPAPER to stringResource(Res.string.theme_color_wallpaper))
                             }
                             add(DataStoreManager.THEME_COLOR_CUSTOM to stringResource(Res.string.theme_color_custom))
+                            add(DataStoreManager.THEME_COLOR_ARTWORK to "From the playing song")
                         }
                     SettingItem(
                         title = stringResource(Res.string.theme_color),
@@ -1007,6 +1008,25 @@ fun SettingScreen(
                         smallSubtitle = true,
                         switch = (enableLiquidGlass to { viewModel.setEnableLiquidGlass(it) }),
                     )
+                    // erhu's liquid-glass strength: how frosted every glass surface is, Radio and Local included.
+                    if (enableLiquidGlass) {
+                        val stored by remember { sharedViewModel.getGlassStrength() }.collectAsStateWithLifecycle(0.5f)
+                        var strength by remember(stored) { androidx.compose.runtime.mutableFloatStateOf(stored) }
+                        SettingItem(
+                            title = "Glass strength",
+                            subtitle = "${(strength * 100).toInt()}% · from clear to frosted",
+                            smallSubtitle = true,
+                        )
+                        androidx.compose.material3.Slider(
+                            value = strength,
+                            onValueChange = {
+                                strength = it
+                                com.maxrave.simpmusic.ui.component.GlassTuning.strength = it
+                            },
+                            onValueChangeFinished = { sharedViewModel.setGlassStrength(strength) },
+                            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                        )
+                    }
                 }
             }
         }

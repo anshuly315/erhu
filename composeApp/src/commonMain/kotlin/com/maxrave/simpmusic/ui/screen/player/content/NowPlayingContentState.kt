@@ -152,6 +152,8 @@ class NowPlayingContentState(
      * at startup is still being rebuilt: the same id the comments sheet uses.
      */
     val videoId: String? = null,
+    /** False for stations, phone files and podcast episodes: there are no YouTube comments to show. */
+    val commentsAvailable: Boolean = true,
 )
 
 /**

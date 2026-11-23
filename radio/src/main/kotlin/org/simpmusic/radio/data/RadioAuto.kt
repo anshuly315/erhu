@@ -19,6 +19,7 @@ object RadioAuto {
         com.maxrave.domain.data.radio.RadioStreams.registerAll(
             (store.favourites.value + store.history.value).associate { com.maxrave.domain.data.radio.RadioStreams.idFor(it.uuid) to it.streamUrl },
         )
+        com.maxrave.domain.data.radio.RadioStreams.registerAll(PodcastUrls.load(context))
 
         fun RadioStation.item() = RadioItem(uuid, name, subtitle, favicon.takeIf { it.startsWith("http") } ?: FallbackArt.uriFor(app, uuid, tags, language), streamUrl)
         RadioBrowse.provider =

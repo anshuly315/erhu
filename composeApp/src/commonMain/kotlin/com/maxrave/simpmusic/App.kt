@@ -1,5 +1,10 @@
 package com.maxrave.simpmusic
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import com.maxrave.simpmusic.expect.ui.toImageBitmap
+import com.maxrave.simpmusic.expect.ui.toReadableBitmap
+import com.materialkolor.ktx.themeColorOrNull
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -509,10 +514,13 @@ fun App(
     val isTablet = windowSize.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isTabletLandscape = isTablet && currentOrientation() == Orientation.LANDSCAPE
 
+    val glassStrength by remember(viewModel) { viewModel.getGlassStrength() }.collectAsStateWithLifecycle(0.5f)
+    androidx.compose.runtime.SideEffect { com.maxrave.simpmusic.ui.component.GlassTuning.strength = glassStrength }
     AppTheme(
         themeMode = themeMode,
         themeColorSource = themeColorSource,
         customThemeColor = parseThemeColorHex(customThemeColorHex),
+        artworkThemeColor = rememberArtworkThemeColor(viewModel, enabled = themeColorSource == DataStoreManager.THEME_COLOR_ARTWORK),
         // The setting governs Desktop too, the same as Android: off, every glass surface draws flat.
         liquidGlassEnabled = isLiquidGlassEnabled == TRUE,
     ) {
@@ -1116,3 +1124,46 @@ fun App(
         )
     }
 }
+
+
+/**
+ * The colour the whole app takes on when "Theme colour" is "From the playing song": the cover is
+ * quantized and scored the way Material You scores a wallpaper. Loads the cover itself, so it works
+ * with the player closed. Eases between songs so a track change glides rather than flashes.
+ */
+@Composable
+private fun rememberArtworkThemeColor(
+    viewModel: SharedViewModel,
+    enabled: Boolean,
+): androidx.compose.ui.graphics.Color? {
+    val urlFlow = remember(viewModel) { viewModel.nowPlayingScreenData.map { it.thumbnailURL }.distinctUntilChanged() }
+    val url by urlFlow.collectAsStateWithLifecycle(null)
+    val context = coil3.compose.LocalPlatformContext.current
+    val picked by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.Color?>(null, url, enabled) {
+        val u = url
+        if (!enabled || u == null) return@produceState
+        val color =
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                runCatching {
+                    val result =
+                        coil3.SingletonImageLoader
+                            .get(context)
+                            .execute(coil3.request.ImageRequest.Builder(context).data(u).build())
+                    (result as? coil3.request.SuccessResult)
+                        ?.image
+                        ?.toImageBitmap()
+                        ?.toReadableBitmap(ARTWORK_SEED_PX, ARTWORK_SEED_PX)
+                        ?.themeColorOrNull()
+                }.getOrNull()
+            }
+        if (color != null) value = color
+    }
+    val animated by androidx.compose.animation.animateColorAsState(
+        targetValue = picked ?: androidx.compose.ui.graphics.Color.Transparent,
+        animationSpec = androidx.compose.animation.core.tween(800),
+        label = "artworkTheme",
+    )
+    return if (enabled && picked != null) animated else null
+}
+
+private const val ARTWORK_SEED_PX = 112

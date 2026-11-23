@@ -293,7 +293,7 @@ fun Modifier.drawInteractiveGlass(
                         } else {
                             lerp(8f.dp.toPx(), 2f.dp.toPx(), -l)
                         }
-                    ) * blurScale + 2f.dp.toPx() * press,
+                    ) * blurScale * GlassTuning.blurFactor + 2f.dp.toPx() * press,
                 )
                 // refractionHeight stays below the stadium inradius (minDimension / 2) so the
                 // top and bottom refraction never meet at the medial axis — that meeting point on
@@ -308,7 +308,7 @@ fun Modifier.drawInteractiveGlass(
             onDrawSurface = {
                 // Stay "đục đen": darken more as the background brightens so the glass never washes
                 // out to white (shared by the bottom bar capsule, search FAB and detail-screen pills).
-                val darken = lerp(minScrim, maxScrim, ((luminance() - 0.3f) / 0.5f).coerceIn(0f, 1f))
+                val darken = lerp(minScrim, maxScrim, ((luminance() - 0.3f) / 0.5f).coerceIn(0f, 1f)) * GlassTuning.tintFactor
                 drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken))
                 val press = interaction?.pressProgress ?: 0f
                 if (press > 0f) {
@@ -417,4 +417,17 @@ private suspend inline fun AwaitPointerEventScope.awaitDragOrUp(pointerId: Point
             }
         }
     }
+}
+
+
+/**
+ * The Glass strength setting (Settings > User interface), after erhu's liquid-glass strength
+ * slider. 0 = clear glass (little blur, light tint), 1 = heavily frosted; 0.5 is the stock look.
+ * Read in the draw phase, so moving the slider redraws the glass without recomposing anything.
+ */
+object GlassTuning {
+    var strength by androidx.compose.runtime.mutableFloatStateOf(0.5f)
+
+    val blurFactor: Float get() = 0.4f + 1.2f * strength.coerceIn(0f, 1f)
+    val tintFactor: Float get() = 0.5f + strength.coerceIn(0f, 1f)
 }

@@ -52,8 +52,9 @@ private fun ProvideRadioTheme(content: @Composable () -> Unit) {
     val scheme = androidx.compose.material3.MaterialTheme.colorScheme
     val dark = com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme.current
     val glass = com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled.current
+    val strength = com.maxrave.simpmusic.ui.component.GlassTuning.strength
     val theme =
-        remember(scheme, dark, glass) {
+        remember(scheme, dark, glass, strength) {
             org.simpmusic.radio.ui.RadioTheme(
                 bg = scheme.background,
                 surface = scheme.surfaceContainerHigh,
@@ -63,6 +64,7 @@ private fun ProvideRadioTheme(content: @Composable () -> Unit) {
                 ink = scheme.onBackground,
                 dark = dark,
                 glass = glass,
+                glassStrength = strength,
             )
         }
     androidx.compose.runtime.CompositionLocalProvider(org.simpmusic.radio.ui.LocalRadioTheme provides theme, content = content)

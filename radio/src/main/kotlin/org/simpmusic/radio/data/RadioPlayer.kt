@@ -62,6 +62,7 @@ class RadioPlayer(
     ) {
         val chosen = episodes.getOrNull(index) ?: return
         episodes.forEach { RadioStreams.register(it.trackId, it.url) }
+        PodcastUrls.remember(context, episodes.associate { it.trackId to it.url })
         val tracks = episodes.map { it.toTrack() }
         RadioNow.station.value = null
         handler.setQueueData(
@@ -113,3 +114,31 @@ private fun PodcastEpisode.toTrack(): Track =
         feedbackTokens = null,
         resultType = null,
     )
+
+
+/**
+ * Episode URLs kept on disk (the newest 300), so a podcast queue restored after the app restarts
+ * still knows where each episode lives. Registered at app start by [RadioAuto.install].
+ */
+object PodcastUrls {
+    private const val PREFS = "podcast_urls"
+    private const val KEY = "map"
+    private const val MAX = 300
+
+    fun remember(context: android.content.Context, urls: Map<String, String>) {
+        val prefs = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+        val all = LinkedHashMap(load(context))
+        urls.forEach { (id, url) -> all.remove(id); all[id] = url }
+        val kept = all.entries.toList().takeLast(MAX)
+        val json = org.json.JSONObject().apply { kept.forEach { put(it.key, it.value) } }
+        prefs.edit().putString(KEY, json.toString()).apply()
+    }
+
+    fun load(context: android.content.Context): Map<String, String> {
+        val raw = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getString(KEY, null) ?: return emptyMap()
+        return runCatching {
+            val o = org.json.JSONObject(raw)
+            o.keys().asSequence().associateWith { o.getString(it) }
+        }.getOrDefault(emptyMap())
+    }
+}

@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
@@ -139,20 +140,20 @@ fun NowPlayingContentErhu(
             Column(
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 16.dp),
             ) {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RoundButton(44.dp, colors.content.copy(alpha = 0.14f), onClick = actions.onDismiss) {
-                        Icon(state.dismissIcon, contentDescription = "Close player", tint = colors.content)
+                // erhu's header: a plain back arrow, "Now Playing" in large type, the menu at the end.
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RoundButton(48.dp, Color.Transparent, onClick = actions.onDismiss) {
+                        Icon(state.dismissIcon, contentDescription = "Close player", tint = colors.content, modifier = Modifier.size(28.dp))
                     }
                     Text(
-                        text = state.screenData.playlistName,
-                        modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                        color = colors.content.copy(alpha = 0.8f),
+                        text = "Now Playing",
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                        color = colors.content,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelLarge,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Medium,
                     )
-                    RoundButton(44.dp, colors.content.copy(alpha = 0.14f), onClick = actions.onShowMoreSheet) {
+                    RoundButton(48.dp, Color.Transparent, onClick = actions.onShowMoreSheet) {
                         Icon(SimpIcons.MoreVert, contentDescription = "More options", tint = colors.content)
                     }
                 }
@@ -167,18 +168,18 @@ fun NowPlayingContentErhu(
                             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(state.timelineState.elapsedLabel(state.sliderValue / 100f), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                                 if (state.artworkQueue.isNotEmpty()) {
-                                    Text("${state.currentOrderIndex + 1} / ${state.artworkQueue.size}", color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
+                                    Text("${state.currentOrderIndex + 1} / ${state.artworkQueue.size}", color = colors.content.copy(alpha = 0.6f), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.5.sp)
                                 }
                                 Text(state.timelineState.lengthLabel(), color = colors.content.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                             }
-                            WavySeekBar(
+                            ErhuSeekBar(
                                 progressFraction = state.sliderValue / 100f,
                                 isPlaying = c.isPlaying,
-                                activeColor = colors.accent,
-                                trackColor = colors.content.copy(alpha = 0.22f),
-                                thumbColor = colors.accent,
+                                accent = colors.accent,
+                                track = colors.content.copy(alpha = 0.22f),
                                 onSliderChange = actions.onSliderChange,
                                 onSliderChangeFinished = actions.onSliderChangeFinished,
+                                modifier = Modifier.padding(horizontal = 4.dp),
                             )
                             // Five equal columns: shuffle, previous, play / pause, next, repeat.
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -219,7 +220,8 @@ fun NowPlayingContentErhu(
                                 .padding(18.dp),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Lyrics", color = colors.content, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                val unsynced = state.screenData.lyricsData?.lyrics?.syncType == "UNSYNCED"
+                                Text(if (unsynced) "Lyrics · not synced" else "Lyrics", color = colors.content, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                                 Icon(SimpIcons.OpenInFull, "Open lyrics", tint = colors.content.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
                             }
                             Spacer(Modifier.height(10.dp))
@@ -269,12 +271,13 @@ private fun Carousel(
         val cardW = artSide + pad * 2
         val cardH = artSide + pad * 2 + metaH
         val sidePad = ((maxWidth - cardW) / 2).coerceAtLeast(0.dp)
-        val shape = RoundedCornerShape(28.dp + pad)
+        // erhu: Radius.large (16dp) on the artwork, plus the card padding on the card around it.
+        val shape = RoundedCornerShape(16.dp + pad)
         HorizontalPager(
             state = state.artworkPagerState,
             contentPadding = PaddingValues(horizontal = sidePad),
-            pageSpacing = 12.dp,
-            beyondViewportPageCount = 1,
+            pageSpacing = 0.dp,
+            beyondViewportPageCount = 2,
             verticalAlignment = Alignment.CenterVertically,
             userScrollEnabled = state.artworkQueue.isNotEmpty(),
             key = { idx -> "erhu_${state.artworkQueue.getOrNull(idx)?.videoId.orEmpty()}_$idx" },
@@ -296,15 +299,8 @@ private fun Carousel(
                 Modifier
                     .height(cardH)
                     .fillMaxWidth()
-                    .zIndex(if (page == state.artworkPagerState.currentPage) 1f else 0f)
-                    .graphicsLayer {
-                        // Stacked: the neighbours slide in behind the current card, a little smaller.
-                        val pull = stack * offset.coerceAtMost(1f)
-                        translationX = -signed.coerceIn(-1f, 1f) * pull * (cardW.toPx() + 12.dp.toPx()) * 0.92f
-                        val sc = 1f - 0.08f * pull
-                        scaleX = sc
-                        scaleY = sc
-                    }
+                    .zIndex(if (signed.absoluteValue < 0.5f) 1f else 0f)
+                    .graphicsLayer { depthCard(signed, stack, hideLeft = page + 1 < state.artworkQueue.size) }
                     .then(if (glass) Modifier.liquidGlass(backdrop, shape, interactive = false) else Modifier)
                     .clip(shape)
                     .erhuCardSurface(colors, shape, artSide + pad * 2, glass)
@@ -328,7 +324,7 @@ private fun Carousel(
                             val fallback = url?.replace("maxresdefault", "hqdefault")
                             if (fallback != null && fallback != url) url = fallback
                         },
-                        modifier = Modifier.size(artSide).clip(RoundedCornerShape(28.dp)),
+                        modifier = Modifier.size(artSide).clip(RoundedCornerShape(16.dp)),
                     )
                     Row(
                         Modifier.fillMaxWidth().height(metaH).padding(start = 6.dp),
@@ -370,7 +366,7 @@ private fun Carousel(
                                 Modifier
                                     .padding(pad)
                                     .size(artSide)
-                                    .clip(RoundedCornerShape(28.dp))
+                                    .clip(RoundedCornerShape(16.dp))
                                     .background(Color.Black),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -394,10 +390,47 @@ private fun Carousel(
                             }
                         }
                     }
-                if (offset > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f * offset)))
+                if (offset > 0f) Box(Modifier.fillMaxSize().graphicsLayer { alpha = offset }.background(Color.Black.copy(alpha = 0.45f)))
             }
         }
     }
+}
+
+/** Side cards: where they stand (share of a card's width from the centre), how small, how turned. */
+private const val SIDE_SPACING = 0.62f
+private const val SIDE_SCALE = 0.78f
+private const val SIDE_TURN_DEGREES = 32f
+private const val STACKED_BEHIND_SCALE = 1.06f
+private const val STACKED_HIDE_RATE = 1.5f
+private const val VANISH_DISTANCE = 1.6f
+private const val CAMERA_DISTANCE = 14f
+
+/**
+ * erhu's depth carousel, as a transform on the shell's pager pages: a card [distance] places from
+ * the centre moves in to [SIDE_SPACING] of its width, shrinks and turns towards the centre, and
+ * fades out past one place. [stack] gathers the neighbours into one slightly larger card behind
+ * the current one. The pager lays pages one width apart, so that spacing is taken back out.
+ */
+private fun androidx.compose.ui.graphics.GraphicsLayerScope.depthCard(
+    distance: Float,
+    stack: Float,
+    hideLeft: Boolean,
+) {
+    val away = distance.absoluteValue
+    val near = away.coerceAtMost(1f)
+    val depth = near * near * (3f - 2f * near)
+    val sign = kotlin.math.sign(distance)
+    val stackedOut = 2f * minOf(near, 1f - near)
+    val scale = lerp(1f - (1f - SIDE_SCALE) * depth, 1f + (STACKED_BEHIND_SCALE - 1f) * depth, stack)
+    scaleX = scale
+    scaleY = scale
+    val wanted = lerp(distance * size.width * SIDE_SPACING, sign * size.width * SIDE_SPACING * stackedOut, stack)
+    translationX = wanted - distance * size.width
+    rotationY = -sign * SIDE_TURN_DEGREES * depth * (1f - stack)
+    cameraDistance = CAMERA_DISTANCE * density
+    val vanish = (1f - (away - 1f).coerceAtLeast(0f) / (VANISH_DISTANCE - 1f)).coerceIn(0f, 1f)
+    val gathered = if (hideLeft) (stack * (-distance).coerceIn(0f, 1f) * STACKED_HIDE_RATE).coerceAtMost(1f) else 0f
+    alpha = vanish * (1f - gathered)
 }
 
 /** erhu's card material: diagonal gradient body, light along the top, a soft shade under the artwork, lower shade and a rim. */
@@ -449,7 +482,7 @@ private fun SmallIcon(
         Modifier
             .size(44.dp)
             .clip(CircleShape)
-            .background(if (active) Color.White.copy(alpha = 0.22f) else Color.Transparent)
+            .background(if (active) Color.Black.copy(alpha = 0.32f) else Color.Transparent)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { content() }

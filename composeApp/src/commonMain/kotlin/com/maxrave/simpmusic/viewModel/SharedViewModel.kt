@@ -2111,6 +2111,13 @@ class SharedViewModel(
 
     fun getThemeColorSource() = dataStoreManager.themeColorSource
 
+    /** Glass strength (0..1, 0.5 = stock), stored under its own key. */
+    fun getGlassStrength() = dataStoreManager.getString(GLASS_STRENGTH_KEY).map { it?.toFloatOrNull()?.coerceIn(0f, 1f) ?: 0.5f }
+
+    fun setGlassStrength(value: Float) {
+        viewModelScope.launch { dataStoreManager.putString(GLASS_STRENGTH_KEY, value.coerceIn(0f, 1f).toString()) }
+    }
+
     fun getCustomThemeColor() = dataStoreManager.customThemeColor
 
     fun getNowPlayingStyle() = dataStoreManager.nowPlayingStyle
@@ -2487,3 +2494,5 @@ sealed class VoteState {
  * of a track onwards.
  */
 private fun String.isCanvasVideoUrl(): Boolean = contains(".mp4") || contains(".m3u8")
+
+private const val GLASS_STRENGTH_KEY = "glass_strength"
